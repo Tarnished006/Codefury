@@ -24,9 +24,15 @@ __pycache__/
 *$py.class
 *.sqlite
 *.db
+backend/*.db
+backend/*.sqlite
+scratch/
+backend/scratch/
+deployments/
 
 # Environment variables & local secrets
 .env
+.env*
 .env*.local
 frontend/.env.local
 .env.development.local

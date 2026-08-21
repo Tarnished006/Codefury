@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     VERSION: str = "2.0.0"
     API_V1_STR: str = "/api"
     
-    # Zero-Fail Demo Switch: Deterministic fallback streaming proxy
-    DEMO_MODE: bool = True
+    # Execution mode: False = Live real APIs, True = Fallback deterministic simulation
+    DEMO_MODE: bool = False
     
     # Security & Auth
     SECRET_KEY: str = "agenthub_super_secret_jwt_key_codefury_2026_x842"
@@ -17,9 +17,24 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./agenthub.db"
     
-    # External APIs
+    # Hugging Face API Credentials (loaded exclusively from environment variables)
+    HF_TOKEN: Optional[str] = None
     HUGGINGFACE_API_KEY: Optional[str] = None
     
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", extra="ignore")
+    # Stripe Payment Credentials (loaded exclusively from environment variables)
+    STRIPE_PUBLISHABLE_KEY: Optional[str] = None
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_SUCCESS_URL: str = "http://localhost:3000/wallet?status=success&session_id={CHECKOUT_SESSION_ID}"
+    STRIPE_CANCEL_URL: str = "http://localhost:3000/wallet?status=cancelled"
+    
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file=(".env", ".env.local"),
+        extra="ignore"
+    )
+
+    @property
+    def hf_api_token(self) -> Optional[str]:
+        return self.HF_TOKEN or self.HUGGINGFACE_API_KEY
 
 settings = Settings()
