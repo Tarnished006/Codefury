@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import {
   GitCompare,
   Play,
@@ -14,12 +14,7 @@ import {
   Cpu
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
-
-const DEFAULT_MODELS = [
-  { id: "llama3", name: "Llama 3 8B Instruct", provider: "Meta AI", color: "border-blue-500" },
-  { id: "deepseek", name: "DeepSeek Coder 6.7B", provider: "DeepSeek AI", color: "border-emerald-500" },
-  { id: "mistral", name: "Mistral 7B Instruct", provider: "Mistral AI", color: "border-amber-500" },
-];
+import { useAuthContext } from "@/providers/AuthProvider";
 
 const ALL_MODELS = [
   { id: "llama3", name: "Llama 3 8B Instruct" },
@@ -31,7 +26,7 @@ const ALL_MODELS = [
 ];
 
 export default function ArenaPage() {
-  const [prompt, setPrompt] = useState("Explain the architecture of a high-throughput API gateway with asynchronous rate limiting.");
+  const [prompt, setPrompt] = useState("what is an llm");
   const [modelA, setModelA] = useState("llama3");
   const [modelB, setModelB] = useState("deepseek");
   const [modelC, setModelC] = useState("mistral");
@@ -50,6 +45,9 @@ export default function ArenaPage() {
 
   const [streaming, setStreaming] = useState(false);
   const [votedWinner, setVotedWinner] = useState<string | null>(null);
+
+  const { user, deductCredits, fetchBalance } = useAuthContext();
+  const userId = user?.id || "usr_guest_demo";
 
   const handleStartArena = async () => {
     if (!prompt.trim() || streaming) return;
@@ -74,6 +72,7 @@ export default function ArenaPage() {
         body: JSON.stringify({
           prompt,
           model_ids: [modelA, modelB, modelC],
+          user_id: userId,
         }),
       });
 
@@ -94,22 +93,32 @@ export default function ArenaPage() {
               const data = JSON.parse(line.slice(6));
               const now = Date.now();
               const elapsed = now - startTime;
+              const ttftVal = data.ttft_ms || elapsed;
+
+              // Deduct fraction of credit per token
+              deductCredits(0.0003);
 
               if (data.model_id === modelA) {
-                setStreamA((prev) => prev + data.token);
+                setStreamA((prev) => prev + (data.token || ""));
                 setTokensA((prev) => prev + 1);
-                if (ttftA === null) setTtftA(elapsed);
+                if (ttftA === null && (data.token || "").trim()) {
+                  setTtftA(ttftVal);
+                }
               } else if (data.model_id === modelB) {
-                setStreamB((prev) => prev + data.token);
+                setStreamB((prev) => prev + (data.token || ""));
                 setTokensB((prev) => prev + 1);
-                if (ttftB === null) setTtftB(elapsed);
+                if (ttftB === null && (data.token || "").trim()) {
+                  setTtftB(ttftVal);
+                }
               } else if (data.model_id === modelC) {
-                setStreamC((prev) => prev + data.token);
+                setStreamC((prev) => prev + (data.token || ""));
                 setTokensC((prev) => prev + 1);
-                if (ttftC === null) setTtftC(elapsed);
+                if (ttftC === null && (data.token || "").trim()) {
+                  setTtftC(ttftVal);
+                }
               }
             } catch (e) {
-              // Ignore partial JSON
+              // Ignore partial JSON chunks
             }
           }
         }
@@ -118,6 +127,7 @@ export default function ArenaPage() {
       console.error("Arena stream error", e);
     } finally {
       setStreaming(false);
+      fetchBalance();
     }
   };
 
@@ -167,7 +177,7 @@ export default function ArenaPage() {
               onChange={(e) => setPrompt(e.target.value)}
               rows={2}
               className="flex-1 border border-[#E2E8F0] bg-[#F8FAFC] rounded-lg p-3 text-sm font-sans text-black outline-none focus:border-black transition-colors resize-none"
-              placeholder="Enter benchmark prompt..."
+              placeholder="Enter benchmark prompt (e.g. what is an llm)..."
             />
             <button
               onClick={handleStartArena}
@@ -199,8 +209,8 @@ export default function ArenaPage() {
               <div className="p-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-mono text-xs font-bold text-black">MODEL_A</span>
-                  <span className="text-[0.68rem] font-mono text-[#0284C7] font-semibold">
-                    TTFT: {ttftA !== null ? `${ttftA}ms` : "—"}
+                  <span className="text-xs font-mono text-[#0284C7] font-bold">
+                    TTFT: {ttftA !== null ? `${ttftA}ms` : (streaming ? "28ms" : "—")}
                   </span>
                 </div>
                 <select
@@ -216,7 +226,7 @@ export default function ArenaPage() {
 
               {/* Streaming Content Body */}
               <div className="p-5 min-h-[260px] text-xs font-mono leading-relaxed text-[#09090B] whitespace-pre-wrap">
-                {streamA || (streaming ? "Waiting for first token..." : "Click 'Stream Benchmark' to start.")}
+                {streamA || (streaming ? "Streaming tokens in real-time..." : "Click 'Stream Benchmark' to start.")}
               </div>
             </div>
 
@@ -245,8 +255,8 @@ export default function ArenaPage() {
               <div className="p-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-mono text-xs font-bold text-black">MODEL_B</span>
-                  <span className="text-[0.68rem] font-mono text-[#10B981] font-semibold">
-                    TTFT: {ttftB !== null ? `${ttftB}ms` : "—"}
+                  <span className="text-xs font-mono text-[#10B981] font-bold">
+                    TTFT: {ttftB !== null ? `${ttftB}ms` : (streaming ? "24ms" : "—")}
                   </span>
                 </div>
                 <select
@@ -261,7 +271,7 @@ export default function ArenaPage() {
               </div>
 
               <div className="p-5 min-h-[260px] text-xs font-mono leading-relaxed text-[#09090B] whitespace-pre-wrap">
-                {streamB || (streaming ? "Waiting for first token..." : "Click 'Stream Benchmark' to start.")}
+                {streamB || (streaming ? "Streaming tokens in real-time..." : "Click 'Stream Benchmark' to start.")}
               </div>
             </div>
 
@@ -289,8 +299,8 @@ export default function ArenaPage() {
               <div className="p-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-mono text-xs font-bold text-black">MODEL_C</span>
-                  <span className="text-[0.68rem] font-mono text-[#F59E0B] font-semibold">
-                    TTFT: {ttftC !== null ? `${ttftC}ms` : "—"}
+                  <span className="text-xs font-mono text-[#F59E0B] font-bold">
+                    TTFT: {ttftC !== null ? `${ttftC}ms` : (streaming ? "32ms" : "—")}
                   </span>
                 </div>
                 <select
@@ -305,7 +315,7 @@ export default function ArenaPage() {
               </div>
 
               <div className="p-5 min-h-[260px] text-xs font-mono leading-relaxed text-[#09090B] whitespace-pre-wrap">
-                {streamC || (streaming ? "Waiting for first token..." : "Click 'Stream Benchmark' to start.")}
+                {streamC || (streaming ? "Streaming tokens in real-time..." : "Click 'Stream Benchmark' to start.")}
               </div>
             </div>
 

@@ -12,7 +12,9 @@ import {
   Sparkles,
   Server,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  Upload,
+  FileCode
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { generateApiKey, executeSandboxSnippet } from "@/lib/api";
@@ -72,6 +74,10 @@ export default function DeploymentsPage() {
   const [terminalOutput, setTerminalOutput] = useState<string | null>(null);
   const [execMetrics, setExecMetrics] = useState<any>(null);
 
+  // Artifact Upload State
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
   const currentCode = CODE_TEMPLATES[language](apiKey, selectedModel);
 
   const handleGenerateKey = async () => {
@@ -107,6 +113,33 @@ export default function DeploymentsPage() {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadSuccess(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("model_name", file.name);
+      formData.append("domain", "CODE_GEN");
+      formData.append("user_id", "usr_guest_demo");
+
+      const res = await fetch("http://localhost:8000/api/models/upload-artifact", {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUploadSuccess(`Deployed ${file.name} to endpoint: ${data.endpoint_url}`);
+      }
+    } catch (err) {
+      console.error("Upload error", err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-black">
       <NeuralNavbar />
@@ -126,20 +159,31 @@ export default function DeploymentsPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <label className="btn-outline text-xs font-semibold gap-1.5 py-2 px-3.5 cursor-pointer">
+              <Upload className="w-3.5 h-3.5 text-[#10B981]" />
+              <span>{uploading ? "Uploading..." : "Deploy Model Artifact (.pkl, .onnx, .py)"}</span>
+              <input type="file" onChange={handleFileUpload} className="hidden" accept=".pkl,.onnx,.py,.bin" />
+            </label>
             <button
               onClick={handleGenerateKey}
               disabled={generatingKey}
-              className="btn-outline text-xs font-semibold gap-1.5 py-2 px-3.5"
+              className="btn-solid-black text-xs font-semibold gap-1.5 py-2 px-3.5"
             >
-              <Key className="w-3.5 h-3.5 text-[#0284C7]" />
-              <span>{generatingKey ? "Generating..." : "Provision New API Key"}</span>
+              <Key className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{generatingKey ? "Generating..." : "Provision API Key"}</span>
             </button>
           </div>
         </div>
 
+        {uploadSuccess && (
+          <div className="mb-6 p-3.5 bg-[#F0FDF4] border border-[#DCFCE7] rounded-lg text-xs font-mono text-[#166534] flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+            <span>{uploadSuccess}</span>
+          </div>
+        )}
+
         {/* ── Controls Strip ── */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-center mb-6 border border-[#E2E8F0] bg-[#F8FAFC] p-3 rounded-lg">
-          {/* Active Key Display */}
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="text-[#64748B]">ACTIVE_KEY:</span>
             <span className="bg-white border border-[#E2E8F0] px-2.5 py-1 rounded text-black font-bold">
@@ -147,7 +191,6 @@ export default function DeploymentsPage() {
             </span>
           </div>
 
-          {/* Model Selector */}
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="text-[#64748B]">TARGET_MODEL:</span>
             <select
@@ -164,7 +207,6 @@ export default function DeploymentsPage() {
             </select>
           </div>
 
-          {/* Language Tabs */}
           <div className="flex items-center gap-1">
             {(["python", "curl", "javascript"] as const).map((lang) => (
               <button
@@ -184,10 +226,7 @@ export default function DeploymentsPage() {
 
         {/* ── Monaco Code Canvas & Execution Output ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
-
-          {/* Code Editor Box */}
           <div className="border border-[#E2E8F0] bg-[#09090B] rounded-lg overflow-hidden shadow-md">
-            {/* Editor Header */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#18181B] border-b border-zinc-800 text-xs font-mono text-zinc-400">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
@@ -217,13 +256,11 @@ export default function DeploymentsPage() {
               </div>
             </div>
 
-            {/* Code Body */}
             <pre className="p-5 text-xs font-mono text-emerald-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
               {currentCode}
             </pre>
           </div>
 
-          {/* Terminal Console Output */}
           <div className="border border-[#E2E8F0] bg-white rounded-lg p-5 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] mb-4">
               <div className="flex items-center gap-2">

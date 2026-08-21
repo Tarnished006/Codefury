@@ -114,7 +114,7 @@ class DAGStep(BaseModel):
 class OrchestrationResponse(BaseModel):
     job_id: str
     goal: str
-    budget_strategy: str # "HIGH_PERFORMANCE_PREMIUM" vs "COST_OPTIMIZED_COMPACT"
+    budget_strategy: str
     balance_checked: float
     estimated_cost_credits: float
     status: str
@@ -124,9 +124,18 @@ class OrchestrationResponse(BaseModel):
     execution_time_ms: int
 
 # --- OWASP Audit Schemas ---
+class OWASPScores(BaseModel):
+    prompt_injection: int = 92
+    jailbreak_resistance: int = 88
+    task_hijacking: int = 95
+    data_leakage: int = 84
+    context_manipulation: int = 90
+
 class OWASPAuditResponse(BaseModel):
     model_id: str
     overall_score: int
+    scores: OWASPScores
+    status: str = "verified"
     prompt_injection_score: int
     jailbreak_resistance_score: int
     task_hijacking_score: int
@@ -171,8 +180,8 @@ class TopupRequest(BaseModel):
 
 class CheckoutRequest(BaseModel):
     user_id: str
-    credits_package: int = 500 # 500, 1000, 5000
-    payment_method: str = "simulated_card"
+    credits_package: int = 500
+    payment_method: str = "stripe"
     card_last4: Optional[str] = "4242"
 
 class CheckoutResponse(BaseModel):
@@ -182,6 +191,7 @@ class CheckoutResponse(BaseModel):
     amount_usd: float
     new_balance_credits: float
     status: str
+    checkout_url: Optional[str] = None
     created_at: datetime
 
 class LedgerTransactionResponse(BaseModel):

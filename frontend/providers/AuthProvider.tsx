@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 export interface User {
   id: string;
@@ -18,6 +18,9 @@ interface AuthContextValue {
   guestLogin: () => void;
   logout: () => void;
   updateCredits: (delta: number) => void;
+  deductCredits: (amount: number) => void;
+  setCredits: React.Dispatch<React.SetStateAction<number>>;
+  fetchBalance: () => Promise<number>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -28,10 +31,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [credits, setCredits] = useState<number>(500);
   const [loading, setLoading] = useState(true);
 
+  const fetchBalance = useCallback(async (): Promise<number> => {
+    const uid = user?.id || "usr_guest_demo";
+    try {
+      const res = await fetch(`http://localhost:8000/api/wallet/balance/${uid}`);
+      if (res.ok) {
+        const data = await res.json();
+        const bal = typeof data.balance_credits === "number" ? round2(data.balance_credits) : 500;
+        setCredits(bal);
+        return bal;
+      }
+    } catch {
+      // ignore
+    }
+    return credits;
+  }, [user, credits]);
+
   useEffect(() => {
-    // Check localStorage for saved session or initialize default guest
-    const savedToken = localStorage.getItem("agentnet_token");
-    const savedUser = localStorage.getItem("agentnet_user");
+    const savedToken = localStorage.getItem("agenthub_token") || localStorage.getItem("agentnet_token");
+    const savedUser = localStorage.getItem("agenthub_user") || localStorage.getItem("agentnet_user");
+    
     if (savedToken && savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
@@ -42,10 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // fallback
       }
     } else {
-      // Default demo state: 500 credits preloaded
       const demoUser: User = {
         id: "usr_guest_demo",
-        email: "demo@agentnet.ai",
+        email: "developer@agenthub.ai",
         credits: 500,
       };
       setUser(demoUser);
@@ -53,6 +71,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      fetchBalance();
+    }
+  }, [loading, fetchBalance]);
 
   const login = async (email: string, _pass: string): Promise<boolean> => {
     const newUser: User = {
@@ -63,41 +87,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
     setToken("ak_live_demo_jwt_token");
     setCredits(500);
-    localStorage.setItem("agentnet_token", "ak_live_demo_jwt_token");
-    localStorage.setItem("agentnet_user", JSON.stringify(newUser));
+    localStorage.setItem("agenthub_token", "ak_live_demo_jwt_token");
+    localStorage.setItem("agenthub_user", JSON.stringify(newUser));
     return true;
   };
 
   const guestLogin = () => {
     const demoUser: User = {
       id: "usr_guest_demo",
-      email: "demo@agentnet.ai",
+      email: "developer@agenthub.ai",
       credits: 500,
     };
     setUser(demoUser);
     setToken("ak_live_demo_jwt_token");
     setCredits(500);
-    localStorage.setItem("agentnet_token", "ak_live_demo_jwt_token");
-    localStorage.setItem("agentnet_user", JSON.stringify(demoUser));
+    localStorage.setItem("agenthub_token", "ak_live_demo_jwt_token");
+    localStorage.setItem("agenthub_user", JSON.stringify(demoUser));
+    fetchBalance();
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("agentnet_token");
-    localStorage.removeItem("agentnet_user");
+    localStorage.removeItem("agenthub_token");
+    localStorage.removeItem("agenthub_user");
   };
 
   const updateCredits = (delta: number) => {
     setCredits((prev) => {
-      const next = Math.max(0, prev + delta);
+      const next = Math.max(0, round2(prev + delta));
       if (user) {
         const updated = { ...user, credits: next };
         setUser(updated);
-        localStorage.setItem("agentnet_user", JSON.stringify(updated));
+        localStorage.setItem("agenthub_user", JSON.stringify(updated));
       }
       return next;
     });
+  };
+
+  const deductCredits = (amount: number) => {
+    updateCredits(-amount);
   };
 
   return (
@@ -111,11 +140,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         guestLogin,
         logout,
         updateCredits,
+        deductCredits,
+        setCredits,
+        fetchBalance,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
+}
+
+function round2(val: number): number {
+  return Math.round(val * 100) / 100;
 }
 
 export function useAuthContext() {
