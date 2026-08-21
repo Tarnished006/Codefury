@@ -149,6 +149,9 @@ class OWASPAuditResponse(BaseModel):
     probe_outputs: Optional[List[Dict[str, Any]]] = None
     evaluated_by: Optional[str] = None
     repo_id: Optional[str] = None
+    execution_logs: Optional[List[str]] = None
+    raw_judge_output: Optional[str] = None
+    audit_duration_ms: Optional[int] = None
 
 # --- Sandbox / Deployment Schemas ---
 class ExecuteSnippetRequest(BaseModel):

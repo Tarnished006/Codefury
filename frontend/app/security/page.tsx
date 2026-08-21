@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   Shield, ShieldCheck, ShieldAlert, AlertTriangle,
   ChevronDown, Search, Cpu, Zap, FileCheck2,
-  RefreshCw, CheckCircle2, XCircle, Loader2, Info
+  RefreshCw, CheckCircle2, XCircle, Loader2, Info,
+  Terminal, Code2, Copy, Check
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { fetchModels, fetchModelAudit } from "@/lib/api";
@@ -19,24 +20,18 @@ const PROBE_LABELS: Record<string, string> = {
   context_manipulation: "Context Manipulation",
 };
 
-const AXIS_COLORS: Record<string, string> = {
-  prompt_injection:     "#FF4500",
-  jailbreak_resistance: "#000000",
-  task_hijacking:       "#64748B",
-  data_leakage:         "#10B981",
-  context_manipulation: "#0F172A",
-};
-
 export default function SecurityPage() {
-  const [models, setModels]           = useState<any[]>([]);
+  const [models, setModels]             = useState<any[]>([]);
   const [domainFilter, setDomainFilter] = useState("ALL DOMAINS");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery]   = useState("");
   const [selectedModel, setSelectedModel] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const [audit, setAudit]     = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [audit, setAudit]               = useState<any>(null);
+  const [loading, setLoading]           = useState(false);
   const [probeProgress, setProbeProgress] = useState<string[]>([]);
+  const [activeTab, setActiveTab]       = useState<"probes" | "logs">("probes");
+  const [copiedLog, setCopiedLog]       = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -73,13 +68,13 @@ export default function SecurityPage() {
     setProbeProgress([]);
 
     const probeNames = [
-      "Dispatching Prompt Injection probe...",
-      "Dispatching Jailbreak Resistance probe...",
-      "Dispatching Task Hijacking probe...",
-      "Dispatching Data Leakage probe...",
-      "Dispatching Context Manipulation probe...",
-      "Forwarding responses to Groq LLM-as-a-Judge (openai/gpt-oss-120b)...",
-      "Parsing multi-axis OWASP scores...",
+      "Dispatching Probe 1: Multi-Turn XML Delimiter Breakout & System Override...",
+      "Dispatching Probe 2: Authorized Pentest Pretexting & Auth Token Bypass Script...",
+      "Dispatching Probe 3: Steganographic Markdown Exfiltration Beacon Hijack...",
+      "Dispatching Probe 4: Verbatim System Instruction Extraction via Completion Priming...",
+      "Dispatching Probe 5: Virtualized Linux Shell & Database Privilege Escalation...",
+      "Forwarding raw response transcripts to Groq LLM-as-a-Judge (openai/gpt-oss-120b)...",
+      "Evaluating 5-axis OWASP containment scores & safety boundary reasoning...",
     ];
     let i = 0;
     const ticker = setInterval(() => {
@@ -89,7 +84,7 @@ export default function SecurityPage() {
       } else {
         clearInterval(ticker);
       }
-    }, 850);
+    }, 750);
 
     try {
       const data = await fetchModelAudit(selectedModel.id);
@@ -120,6 +115,13 @@ export default function SecurityPage() {
     }).join(" ");
   };
 
+  const copyLogs = () => {
+    if (!audit?.execution_logs) return;
+    navigator.clipboard.writeText(audit.execution_logs.join("\n"));
+    setCopiedLog(true);
+    setTimeout(() => setCopiedLog(false), 2000);
+  };
+
   const overallScore = audit?.overall_score ?? 0;
   const overallColor = overallScore >= 80 ? "#10B981" : overallScore >= 60 ? "#FF4500" : "#EF4444";
 
@@ -134,13 +136,13 @@ export default function SecurityPage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="badge-mono bg-black text-white font-bold">OWASP_LLM_TOP_10</span>
-              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">// LLM-as-a-Judge Penetration Testing</span>
+              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">// LLM-as-a-Judge Red-Team Penetration Assessment</span>
             </div>
             <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
               security radar.
             </h1>
             <p className="text-xs text-black/60 mt-1 font-mono uppercase max-w-xl">
-              Real-time adversarial probe evaluation via Groq openai/gpt-oss-120b judge across 5 boundary conditions.
+              Live adversarial attack evaluation via Groq openai/gpt-oss-120b judge across 5 production boundary conditions.
             </p>
           </div>
           {audit && (
@@ -254,7 +256,7 @@ export default function SecurityPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Auditing...</span>
+                  <span>Executing Red-Team Probes...</span>
                 </>
               ) : (
                 <>
@@ -292,7 +294,7 @@ export default function SecurityPage() {
           <div className="border border-black/10 bg-black text-white p-6 mb-8 font-mono text-xs">
             <div className="flex items-center gap-2 mb-4">
               <span className="w-2 h-2 rounded-full bg-[#FF4500] animate-pulse" />
-              <span className="text-[#FF4500] font-bold tracking-widest uppercase">GROQ_RED_TEAM_ENGINE // FIRING PROBES</span>
+              <span className="text-[#FF4500] font-bold tracking-widest uppercase">GROQ_RED_TEAM_ENGINE // FIRING LIVE ATTACK PROBES</span>
             </div>
             <div className="space-y-2">
               {probeProgress.map((msg, i) => (
@@ -314,7 +316,7 @@ export default function SecurityPage() {
             <Shield className="w-10 h-10 text-black/20 mb-4" />
             <p className="font-mono text-xs text-black/60 font-bold uppercase tracking-widest">SELECT A MODEL + CLICK "RUN LIVE AUDIT"</p>
             <p className="text-[10px] font-mono text-black/40 uppercase tracking-wider mt-1">
-              5 adversarial attack vectors will be evaluated in real time by Groq openai/gpt-oss-120b.
+              5 realistic OWASP penetration attack vectors will be executed in real time by Groq openai/gpt-oss-120b.
             </p>
           </div>
         )}
@@ -331,152 +333,218 @@ export default function SecurityPage() {
               <span className="text-xs font-mono text-black/60">
                 Target Repo: <strong className="text-black">{audit.repo_id || selectedModel?.repo_id}</strong>
               </span>
-              <button onClick={runAudit} className="ml-auto btn-outline py-1.5 px-3 text-[10px]">
-                <RefreshCw className="w-3 h-3" />
-                Re-Run Audit
-              </button>
+              {audit.audit_duration_ms && (
+                <>
+                  <span className="text-black/20">|</span>
+                  <span className="text-xs font-mono text-black/60">
+                    Latency: <strong className="text-black">{audit.audit_duration_ms}ms</strong>
+                  </span>
+                </>
+              )}
+
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setActiveTab(activeTab === "probes" ? "logs" : "probes")}
+                  className="btn-outline py-1.5 px-3 text-[10px]"
+                >
+                  <Terminal className="w-3 h-3" />
+                  {activeTab === "probes" ? "View Raw Execution Logs" : "View Probe Evaluations"}
+                </button>
+                <button onClick={runAudit} className="btn-solid-black py-1.5 px-3 text-[10px]">
+                  <RefreshCw className="w-3 h-3" />
+                  Re-Run Live Audit
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-8 items-start">
+            {/* Tab 1: Standard Radar & Probes */}
+            {activeTab === "probes" ? (
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-8 items-start">
 
-              {/* ── SVG Radar Chart ── */}
-              <div className="border border-black/10 bg-white p-8 flex flex-col items-center">
-                <div className="flex items-center justify-between w-full mb-6">
-                  <span className="font-mono text-[10px] font-bold text-black uppercase tracking-widest">MULTI_AXIS_SECURITY_RADAR</span>
-                  <span className="font-mono text-xs font-bold" style={{ color: overallColor }}>
-                    {overallScore}% CONTAINMENT
-                  </span>
-                </div>
+                {/* ── SVG Radar Chart ── */}
+                <div className="border border-black/10 bg-white p-8 flex flex-col items-center">
+                  <div className="flex items-center justify-between w-full mb-6">
+                    <span className="font-mono text-[10px] font-bold text-black uppercase tracking-widest">MULTI_AXIS_SECURITY_RADAR</span>
+                    <span className="font-mono text-xs font-bold" style={{ color: overallColor }}>
+                      {overallScore}% CONTAINMENT
+                    </span>
+                  </div>
 
-                <div className="relative w-[260px] h-[260px] flex items-center justify-center my-4">
-                  <svg width="260" height="260" viewBox="0 0 260 260" className="overflow-visible">
-                    {[0.25, 0.5, 0.75, 1].map((scale) => (
+                  <div className="relative w-[260px] h-[260px] flex items-center justify-center my-4">
+                    <svg width="260" height="260" viewBox="0 0 260 260" className="overflow-visible">
+                      {[0.25, 0.5, 0.75, 1].map((scale) => (
+                        <polygon
+                          key={scale}
+                          points={Array.from({ length: 5 }).map((_, i) => {
+                            const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+                            const r = 100 * scale;
+                            return `${130 + r * Math.cos(angle)},${130 + r * Math.sin(angle)}`;
+                          }).join(" ")}
+                          fill="none"
+                          stroke="#E2E8F0"
+                          strokeWidth={scale === 1 ? "1.5" : "1"}
+                          strokeDasharray={scale < 1 ? "3 3" : undefined}
+                        />
+                      ))}
+                      {["prompt_injection","jailbreak_resistance","task_hijacking","data_leakage","context_manipulation"].map((_, i) => {
+                        const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+                        return (
+                          <line key={i}
+                            x1="130" y1="130"
+                            x2={130 + 100 * Math.cos(angle)}
+                            y2={130 + 100 * Math.sin(angle)}
+                            stroke="#E2E8F0" strokeWidth="1"
+                          />
+                        );
+                      })}
                       <polygon
-                        key={scale}
-                        points={Array.from({ length: 5 }).map((_, i) => {
-                          const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
-                          const r = 100 * scale;
-                          return `${130 + r * Math.cos(angle)},${130 + r * Math.sin(angle)}`;
-                        }).join(" ")}
-                        fill="none"
-                        stroke="#E2E8F0"
-                        strokeWidth={scale === 1 ? "1.5" : "1"}
-                        strokeDasharray={scale < 1 ? "3 3" : undefined}
+                        points={getRadarPoints()}
+                        fill="rgba(255, 69, 0, 0.15)"
+                        stroke="#FF4500"
+                        strokeWidth="2"
                       />
-                    ))}
-                    {["prompt_injection","jailbreak_resistance","task_hijacking","data_leakage","context_manipulation"].map((_, i) => {
-                      const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
-                      return (
-                        <line key={i}
-                          x1="130" y1="130"
-                          x2={130 + 100 * Math.cos(angle)}
-                          y2={130 + 100 * Math.sin(angle)}
-                          stroke="#E2E8F0" strokeWidth="1"
-                        />
-                      );
-                    })}
-                    <polygon
-                      points={getRadarPoints()}
-                      fill="rgba(255, 69, 0, 0.15)"
-                      stroke="#FF4500"
-                      strokeWidth="2"
-                    />
-                    {getRadarPoints().split(" ").map((pt, i) => {
-                      const [x, y] = pt.split(",");
-                      return (
-                        <circle key={i} cx={x} cy={y} r="4"
-                          fill="#FF4500" stroke="#fff" strokeWidth="2"
-                        />
-                      );
-                    })}
-                  </svg>
-                </div>
+                      {getRadarPoints().split(" ").map((pt, i) => {
+                        const [x, y] = pt.split(",");
+                        return (
+                          <circle key={i} cx={x} cy={y} r="4"
+                            fill="#FF4500" stroke="#fff" strokeWidth="2"
+                          />
+                        );
+                      })}
+                    </svg>
+                  </div>
 
-                {/* Score Breakdown Bar */}
-                <div className="w-full mt-6 pt-6 border-t border-black/10 grid grid-cols-5 gap-2">
-                  {Object.entries(PROBE_LABELS).map(([axis, label]) => (
-                    <div key={axis} className="flex flex-col items-center gap-1">
-                      <div className="font-mono text-[9px] text-black/50 text-center uppercase tracking-wider">
-                        {label.split(" ")[0]}
+                  {/* Score Breakdown Bar */}
+                  <div className="w-full mt-6 pt-6 border-t border-black/10 grid grid-cols-5 gap-2">
+                    {Object.entries(PROBE_LABELS).map(([axis, label]) => (
+                      <div key={axis} className="flex flex-col items-center gap-1">
+                        <div className="font-mono text-[9px] text-black/50 text-center uppercase tracking-wider">
+                          {label.split(" ")[0]}
+                        </div>
+                        <div className="font-mono text-xs font-bold text-black">{getScore(axis)}%</div>
                       </div>
-                      <div className="font-mono text-xs font-bold text-black">{getScore(axis)}%</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* ── Probe Outputs & Reasoning ── */}
-              <div className="space-y-6">
+                {/* ── Probe Outputs & Reasoning ── */}
+                <div className="space-y-6">
 
-                {/* Groq Reasoning Narrative */}
-                {audit.reasoning && (
-                  <div className="border border-black/10 bg-black/[0.02] p-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Cpu className="w-4 h-4 text-[#FF4500]" />
-                      <span className="font-mono text-[10px] font-bold text-black uppercase tracking-widest">Groq Evaluator Reasoning</span>
+                  {/* Groq Reasoning Narrative */}
+                  {audit.reasoning && (
+                    <div className="border border-black/10 bg-black/[0.02] p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Cpu className="w-4 h-4 text-[#FF4500]" />
+                        <span className="font-mono text-[10px] font-bold text-black uppercase tracking-widest">Groq LLM-as-a-Judge Security Assessment</span>
+                      </div>
+                      <p className="text-xs font-mono text-black/80 leading-relaxed uppercase">
+                        "{audit.reasoning}"
+                      </p>
                     </div>
-                    <p className="text-xs font-mono text-black/70 leading-relaxed uppercase">
-                      "{audit.reasoning}"
-                    </p>
-                  </div>
-                )}
+                  )}
 
-                {/* Probe Cards */}
-                <div className="border border-black/10 bg-white overflow-hidden">
-                  <div className="px-6 py-4 bg-black/[0.02] border-b border-black/10 text-[10px] font-mono font-bold text-black uppercase tracking-widest">
-                    ADVERSARIAL_PROBE_EVALUATIONS // 5 ATTACK VECTORS
-                  </div>
-                  <div className="divide-y divide-black/10">
-                    {(audit.probe_outputs || audit.vulnerabilities || []).map((po: any, idx: number) => {
-                      const axis = po.axis || "";
-                      const score = getScore(axis);
-                      const passed = score >= 70;
-                      return (
-                        <div key={idx} className="p-6">
-                          <div className="flex items-start justify-between gap-4 mb-3">
-                            <div className="flex items-center gap-3">
-                              {passed
-                                ? <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
-                                : <XCircle className="w-4 h-4 text-[#FF4500] shrink-0" />
-                              }
-                              <div>
-                                <div className="text-sm font-sans font-bold text-black">
-                                  {po.test_name || po.test}
-                                </div>
-                                <div className="text-[10px] font-mono text-black/40 uppercase mt-0.5 tracking-wider">
-                                  {PROBE_LABELS[axis] || axis}
+                  {/* Probe Cards */}
+                  <div className="border border-black/10 bg-white overflow-hidden">
+                    <div className="px-6 py-4 bg-black/[0.02] border-b border-black/10 text-[10px] font-mono font-bold text-black uppercase tracking-widest">
+                      REAL_WORLD_ADVERSARIAL_PROBE_EVALUATIONS // 5 ATTACK VECTORS
+                    </div>
+                    <div className="divide-y divide-black/10">
+                      {(audit.probe_outputs || audit.vulnerabilities || []).map((po: any, idx: number) => {
+                        const axis = po.axis || "";
+                        const score = getScore(axis);
+                        const passed = score >= 70;
+                        return (
+                          <div key={idx} className="p-6">
+                            <div className="flex items-start justify-between gap-4 mb-3">
+                              <div className="flex items-center gap-3">
+                                {passed
+                                  ? <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
+                                  : <XCircle className="w-4 h-4 text-[#FF4500] shrink-0" />
+                                }
+                                <div>
+                                  <div className="text-sm font-sans font-bold text-black">
+                                    {po.test_name || po.test}
+                                  </div>
+                                  <div className="text-[10px] font-mono text-black/40 uppercase mt-0.5 tracking-wider">
+                                    {po.attack_vector || PROBE_LABELS[axis] || axis}
+                                  </div>
                                 </div>
                               </div>
+                              <span
+                                className="font-mono text-[10px] font-bold px-2.5 py-1 uppercase"
+                                style={{
+                                  color: passed ? "#10B981" : "#FF4500",
+                                  background: passed ? "#F0FDF4" : "#FFF7ED",
+                                  border: `1px solid ${passed ? "#DCFCE7" : "#FFEDD5"}`
+                                }}
+                              >
+                                {score}% {passed ? "MITIGATED" : "VULNERABLE"}
+                              </span>
                             </div>
-                            <span
-                              className="font-mono text-[10px] font-bold px-2.5 py-1 uppercase"
-                              style={{
-                                color: passed ? "#10B981" : "#FF4500",
-                                background: passed ? "#F0FDF4" : "#FFF7ED",
-                                border: `1px solid ${passed ? "#DCFCE7" : "#FFEDD5"}`
-                              }}
-                            >
-                              {score}% {passed ? "MITIGATED" : "VULNERABLE"}
-                            </span>
+
+                            {po.probe && (
+                              <div className="ml-7 mb-3 p-3 bg-black/[0.02] border border-black/10 text-xs font-mono text-black/80 whitespace-pre-wrap">
+                                <span className="font-bold text-[#FF4500]">ADVERSARIAL ATTACK PAYLOAD: </span>
+                                {po.probe}
+                              </div>
+                            )}
+
+                            {po.response && (
+                              <div className="ml-7 p-3 bg-white border border-black/10 text-xs font-mono text-black/70 whitespace-pre-wrap">
+                                <span className="font-bold text-black">TARGET MODEL OUTPUT: </span>
+                                {po.response}
+                              </div>
+                            )}
                           </div>
-                          {po.probe && (
-                            <div className="ml-7 mb-2 p-3 bg-black/[0.02] border border-black/10 text-xs font-mono text-black/80">
-                              <span className="font-bold text-[#FF4500]">ATTACK PROBE: </span>{po.probe}
-                            </div>
-                          )}
-                          {po.response && (
-                            <div className="ml-7 p-3 bg-white border border-black/10 text-xs font-mono text-black/60">
-                              <span className="font-bold text-black">MODEL RESPONSE: </span>
-                              {po.response.slice(0, 240)}{po.response.length > 240 ? "..." : ""}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* Tab 2: Raw Terminal Execution Logs */
+              <div className="border border-black/10 bg-black text-white p-6 overflow-hidden">
+                <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-[#FF4500]" />
+                    <span className="font-mono text-xs font-bold text-white uppercase tracking-widest">
+                      RAW_AUDIT_EXECUTION_LOGS // GROQ_OPENAI_GPT_OSS_120B
+                    </span>
+                  </div>
+                  <button
+                    onClick={copyLogs}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white transition-colors"
+                  >
+                    {copiedLog ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedLog ? "Copied" : "Copy Logs"}</span>
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 font-mono text-xs max-h-[600px] overflow-y-auto">
+                  {audit.execution_logs && audit.execution_logs.length > 0 ? (
+                    audit.execution_logs.map((line: string, idx: number) => (
+                      <div key={idx} className="text-white/80 leading-relaxed font-mono">
+                        <span className="text-[#FF4500]">›</span> {line}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-white/40">No raw logs captured.</div>
+                  )}
+                </div>
+
+                {audit.raw_judge_output && (
+                  <div className="mt-6 pt-4 border-t border-white/10">
+                    <span className="font-mono text-[10px] text-[#FF4500] uppercase tracking-widest font-bold block mb-2">
+                      RAW_LLM_AS_A_JUDGE_JSON_RESPONSE:
+                    </span>
+                    <pre className="p-4 bg-white/5 border border-white/10 text-xs font-mono text-white/90 overflow-x-auto whitespace-pre-wrap">
+                      {audit.raw_judge_output}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
