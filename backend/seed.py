@@ -1,17 +1,55 @@
 import asyncio
-import uuid
 import hashlib
-import datetime
 from app.database import AsyncSessionLocal, engine, Base
-from app.models import AIModel, OWASPAudit, User, Wallet
+from app.models import AIModel, OWASPAudit, User, Wallet, Creator, LedgerTransaction
 
 def hash_password(password: str) -> str:
     salt = "agenthub_salt_2026"
     return hashlib.sha256((password + salt).encode("utf-8")).hexdigest()
 
+INITIAL_CREATORS = [
+    {
+        "id": "creator_meta",
+        "name": "Meta AI Research",
+        "handle": "meta_ai",
+        "bio": "Foundational open-weight Llama model series and multimodal research.",
+        "avatar_url": "https://avatars.githubusercontent.com/u/10262924?s=200&v=4",
+        "total_earnings_credits": 2450.80,
+        "pending_payout_credits": 1240.50
+    },
+    {
+        "id": "creator_deepseek",
+        "name": "DeepSeek AI Labs",
+        "handle": "deepseek_ai",
+        "bio": "Specialized high-throughput code synthesis and mathematical reasoning architectures.",
+        "avatar_url": "https://avatars.githubusercontent.com/u/148332176?s=200&v=4",
+        "total_earnings_credits": 1820.40,
+        "pending_payout_credits": 890.20
+    },
+    {
+        "id": "creator_biomed",
+        "name": "BioMistral Consortium",
+        "handle": "biomistral",
+        "bio": "Domain-specific medical foundation models validated on PubMed benchmarks.",
+        "avatar_url": "https://avatars.githubusercontent.com/u/158580975?s=200&v=4",
+        "total_earnings_credits": 980.00,
+        "pending_payout_credits": 650.00
+    },
+    {
+        "id": "creator_fingpt",
+        "name": "FinGPT Engineering Team",
+        "handle": "fingpt_team",
+        "bio": "Quantitative financial sentiment and regulatory compliance models.",
+        "avatar_url": "https://avatars.githubusercontent.com/u/108390772?s=200&v=4",
+        "total_earnings_credits": 760.30,
+        "pending_payout_credits": 410.80
+    }
+]
+
 INITIAL_MODELS = [
     {
         "id": "llama3",
+        "creator_id": "creator_meta",
         "name": "Llama 3 8B Instruct",
         "repo_id": "meta-llama/Meta-Llama-3-8B-Instruct",
         "domain": "LLM_CHAT",
@@ -26,6 +64,7 @@ INITIAL_MODELS = [
     },
     {
         "id": "deepseek",
+        "creator_id": "creator_deepseek",
         "name": "DeepSeek Coder 6.7B",
         "repo_id": "deepseek-ai/deepseek-coder-6.7b-instruct",
         "domain": "CODE_GEN",
@@ -40,6 +79,7 @@ INITIAL_MODELS = [
     },
     {
         "id": "biomedlm",
+        "creator_id": "creator_biomed",
         "name": "BioMistral 7B Medical",
         "repo_id": "BioMistral/BioMistral-7B",
         "domain": "HEALTHCARE",
@@ -54,6 +94,7 @@ INITIAL_MODELS = [
     },
     {
         "id": "llava",
+        "creator_id": "creator_meta",
         "name": "LLaVA 1.5 7B Vision",
         "repo_id": "llava-hf/llava-1.5-7b-hf",
         "domain": "VISION_AI",
@@ -68,6 +109,7 @@ INITIAL_MODELS = [
     },
     {
         "id": "fingpt",
+        "creator_id": "creator_fingpt",
         "name": "FinGPT Forecaster",
         "repo_id": "FinGPT/fingpt-forecaster",
         "domain": "FINANCE",
@@ -82,6 +124,7 @@ INITIAL_MODELS = [
     },
     {
         "id": "mistral",
+        "creator_id": "creator_meta",
         "name": "Mistral 7B Instruct v0.3",
         "repo_id": "mistralai/Mistral-7B-Instruct-v0.3",
         "domain": "LLM_CHAT",
@@ -97,12 +140,18 @@ INITIAL_MODELS = [
 ]
 
 async def seed_database():
-    print("[AgentHub Seed] Initializing database schema...")
+    print("[AgentHub Seed] Re-initializing database schemas for dual-sided marketplace...")
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
         
     async with AsyncSessionLocal() as session:
-        # Seed Demo User
+        # 1. Seed Creators
+        for c_data in INITIAL_CREATORS:
+            creator = Creator(**c_data)
+            session.add(creator)
+            
+        # 2. Seed Demo User & Wallet
         demo_user_id = "usr_guest_demo"
         demo_user = User(
             id=demo_user_id,
@@ -119,12 +168,11 @@ async def seed_database():
         session.add(demo_user)
         session.add(demo_wallet)
         
-        # Seed AI Models
+        # 3. Seed AI Models & OWASP Audits
         for m_data in INITIAL_MODELS:
             model = AIModel(**m_data)
             session.add(model)
             
-            # Seed OWASP Audit for model
             audit = OWASPAudit(
                 id=f"audit_{m_data['id']}",
                 model_id=m_data["id"],
@@ -143,7 +191,7 @@ async def seed_database():
             session.add(audit)
             
         await session.commit()
-        print("[AgentHub Seed] Seed completed: 6 Models, OWASP Audits, and Demo User provisioned with 500 Credits.")
+        print("[AgentHub Seed] Seed complete: 4 Creators, 6 Models, OWASP Audits, and Demo User provisioned.")
 
 if __name__ == "__main__":
     asyncio.run(seed_database())
