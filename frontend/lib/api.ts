@@ -1,16 +1,29 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
+function getAuthHeaders(): HeadersInit {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("agenthub_token") || localStorage.getItem("agentnet_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+  return headers;
+}
+
 export async function fetchModels(domain?: string) {
   const url = domain && domain !== "ALL_DOMAINS" 
     ? `${API_BASE_URL}/models?domain=${encodeURIComponent(domain)}`
     : `${API_BASE_URL}/models`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch models");
   return res.json();
 }
 
 export async function fetchModelAudit(modelId: string) {
-  const res = await fetch(`${API_BASE_URL}/audit/${modelId}`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE_URL}/audit/${modelId}`, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch audit report");
   return res.json();
 }
@@ -18,7 +31,7 @@ export async function fetchModelAudit(modelId: string) {
 export async function orchestrateDAG(goal: string, userId?: string, maxBudgetCredits?: number) {
   const res = await fetch(`${API_BASE_URL}/orchestrate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
       goal,
       user_id: userId,
@@ -30,13 +43,13 @@ export async function orchestrateDAG(goal: string, userId?: string, maxBudgetCre
 }
 
 export async function fetchCreators() {
-  const res = await fetch(`${API_BASE_URL}/creators`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE_URL}/creators`, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch creators");
   return res.json();
 }
 
 export async function fetchCreatorEarnings(creatorId: string) {
-  const res = await fetch(`${API_BASE_URL}/creators/${creatorId}/earnings`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE_URL}/creators/${creatorId}/earnings`, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch creator earnings");
   return res.json();
 }
@@ -49,7 +62,7 @@ export async function requestCreatorPayout(payload: {
 }) {
   const res = await fetch(`${API_BASE_URL}/creators/payout`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload)
   });
   if (!res.ok) {
@@ -62,7 +75,7 @@ export async function requestCreatorPayout(payload: {
 export async function executeSandboxSnippet(language: string, code: string, modelId: string, apiKey?: string) {
   const res = await fetch(`${API_BASE_URL}/sandbox/execute`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ language, code, model_id: modelId, api_key: apiKey })
   });
   if (!res.ok) throw new Error("Sandbox execution failed");
@@ -72,7 +85,7 @@ export async function executeSandboxSnippet(language: string, code: string, mode
 export async function generateApiKey(name: string = "Production Key") {
   const res = await fetch(`${API_BASE_URL}/keys`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ name })
   });
   if (!res.ok) throw new Error("API key generation failed");
@@ -82,7 +95,7 @@ export async function generateApiKey(name: string = "Production Key") {
 export async function checkoutWallet(userId: string, creditsPackage: number, cardLast4: string = "4242") {
   const res = await fetch(`${API_BASE_URL}/wallet/checkout`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ user_id: userId, credits_package: creditsPackage, card_last4: cardLast4 })
   });
   if (!res.ok) throw new Error("Checkout failed");

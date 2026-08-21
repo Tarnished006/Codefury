@@ -3,14 +3,28 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Cpu, Terminal, Shield, Zap, GitCompare, Landmark, Code2, Wallet } from "lucide-react";
+import {
+  Menu,
+  X,
+  Cpu,
+  Terminal,
+  Shield,
+  Zap,
+  GitCompare,
+  Landmark,
+  Code2,
+  Wallet,
+  User,
+  LogOut,
+  Sparkles
+} from "lucide-react";
 import { useAuthContext } from "@/providers/AuthProvider";
 
 export default function NeuralNavbar() {
   const [open, setOpen] = useState(false);
   const [p50, setP50] = useState(38);
   const pathname = usePathname();
-  const { credits } = useAuthContext();
+  const { user, credits, logout, loginAsGuest, isAuthenticated } = useAuthContext();
 
   useEffect(() => {
     const t = setInterval(() => setP50(34 + Math.floor(Math.random() * 8)), 3500);
@@ -69,8 +83,8 @@ export default function NeuralNavbar() {
             })}
           </nav>
 
-          {/* ── Right Telemetry & Deployments Action ── */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* ── Right Telemetry, Wallet & User Auth Badge ── */}
+          <div className="hidden md:flex items-center gap-2.5">
             {/* Live latency pill */}
             <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 border border-[#E2E8F0] bg-[#F8FAFC] rounded-md text-xs font-mono text-[#64748B]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
@@ -87,10 +101,45 @@ export default function NeuralNavbar() {
               <span>CR: {credits}</span>
             </Link>
 
+            {/* User Profile Badge or Login Button */}
+            {user ? (
+              <div className="flex items-center gap-1.5 pl-1 border-l border-[#E2E8F0]">
+                <div className="px-2.5 py-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-md text-xs font-mono text-black flex items-center gap-1.5">
+                  <User className="w-3 h-3 text-[#64748B]" />
+                  <span className="font-bold truncate max-w-[110px]">
+                    @{user.handle || user.email.split("@")[0]}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  title="Sign Out"
+                  className="p-1.5 border border-[#E2E8F0] hover:border-black bg-white rounded-md text-[#64748B] hover:text-black transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 pl-1 border-l border-[#E2E8F0]">
+                <button
+                  onClick={() => loginAsGuest()}
+                  className="px-2 py-1 bg-[#F8FAFC] border border-[#E2E8F0] hover:border-black rounded-md text-xs font-mono font-bold text-black transition-colors flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-cyan-500" />
+                  <span>Guest</span>
+                </button>
+                <Link
+                  href="/login"
+                  className="btn-solid-black py-1 px-2.5 text-xs font-semibold"
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
+
             {/* Deployments / Sandbox Button */}
             <Link
               href="/deployments"
-              className="btn-solid-black py-2 px-3.5 text-xs font-semibold gap-1.5"
+              className="btn-solid-black py-1.5 px-3 text-xs font-semibold gap-1.5 ml-1"
             >
               <Code2 className="w-3.5 h-3.5" />
               <span>Deployments</span>
@@ -123,7 +172,14 @@ export default function NeuralNavbar() {
               {link.label}
             </Link>
           ))}
-          <div className="pt-2 flex items-center gap-2">
+          <div className="pt-2 flex flex-col gap-2">
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="w-full text-center btn-outline py-2 text-xs font-semibold"
+            >
+              {user ? `Signed in as @${user.handle}` : "Sign In / Register"}
+            </Link>
             <Link
               href="/deployments"
               onClick={() => setOpen(false)}
