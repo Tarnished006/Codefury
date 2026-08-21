@@ -7,7 +7,6 @@ import {
   Menu,
   X,
   Cpu,
-  Terminal,
   Shield,
   Zap,
   GitCompare,
@@ -15,8 +14,7 @@ import {
   Code2,
   Wallet,
   User,
-  LogOut,
-  Sparkles
+  LogOut
 } from "lucide-react";
 import { useAuthContext } from "@/providers/AuthProvider";
 
@@ -24,7 +22,7 @@ export default function NeuralNavbar() {
   const [open, setOpen] = useState(false);
   const [p50, setP50] = useState(38);
   const pathname = usePathname();
-  const { user, credits, logout, loginAsGuest, isAuthenticated } = useAuthContext();
+  const { user, credits, logout, isAuthenticated } = useAuthContext();
 
   useEffect(() => {
     const t = setInterval(() => setP50(34 + Math.floor(Math.random() * 8)), 3500);
@@ -85,14 +83,12 @@ export default function NeuralNavbar() {
 
           {/* ── Right Telemetry, Wallet & User Auth Badge ── */}
           <div className="hidden md:flex items-center gap-2.5">
-            {/* Live latency pill */}
             <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 border border-[#E2E8F0] bg-[#F8FAFC] rounded-md text-xs font-mono text-[#64748B]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
               <span>P50:</span>
               <span className="font-bold text-black">{p50}ms</span>
             </div>
 
-            {/* Wallet credit badge (Clickable to /wallet) */}
             <Link
               href="/wallet"
               className="px-2.5 py-1 bg-[#F1F5F9] border border-[#E2E8F0] hover:border-black rounded-md text-xs font-mono font-bold text-black transition-colors flex items-center gap-1.5"
@@ -101,7 +97,6 @@ export default function NeuralNavbar() {
               <span>CR: {credits}</span>
             </Link>
 
-            {/* User Profile Badge or Login Button */}
             {user ? (
               <div className="flex items-center gap-1.5 pl-1 border-l border-[#E2E8F0]">
                 <div className="px-2.5 py-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-md text-xs font-mono text-black flex items-center gap-1.5">
@@ -120,23 +115,15 @@ export default function NeuralNavbar() {
               </div>
             ) : (
               <div className="flex items-center gap-1.5 pl-1 border-l border-[#E2E8F0]">
-                <button
-                  onClick={() => loginAsGuest()}
-                  className="px-2 py-1 bg-[#F8FAFC] border border-[#E2E8F0] hover:border-black rounded-md text-xs font-mono font-bold text-black transition-colors flex items-center gap-1"
-                >
-                  <Sparkles className="w-3 h-3 text-cyan-500" />
-                  <span>Guest</span>
-                </button>
                 <Link
                   href="/login"
-                  className="btn-solid-black py-1 px-2.5 text-xs font-semibold"
+                  className="btn-solid-black py-1 px-3 text-xs font-semibold"
                 >
                   Sign In
                 </Link>
               </div>
             )}
 
-            {/* Deployments / Sandbox Button */}
             <Link
               href="/deployments"
               className="btn-solid-black py-1.5 px-3 text-xs font-semibold gap-1.5 ml-1"
@@ -146,7 +133,6 @@ export default function NeuralNavbar() {
             </Link>
           </div>
 
-          {/* ── Mobile Menu Toggle ── */}
           <button
             className="lg:hidden p-2 text-black"
             onClick={() => setOpen(!open)}
@@ -157,7 +143,6 @@ export default function NeuralNavbar() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {open && (
         <div className="lg:hidden border-t border-[#E2E8F0] bg-white px-5 py-4 space-y-3 shadow-md">
           {navLinks.map((link) => (
@@ -179,13 +164,6 @@ export default function NeuralNavbar() {
               className="w-full text-center btn-outline py-2 text-xs font-semibold"
             >
               {user ? `Signed in as @${user.handle}` : "Sign In / Register"}
-            </Link>
-            <Link
-              href="/deployments"
-              onClick={() => setOpen(false)}
-              className="w-full text-center btn-solid-black py-2 text-xs font-semibold"
-            >
-              Deployments Canvas
             </Link>
           </div>
         </div>

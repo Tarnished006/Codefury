@@ -14,7 +14,7 @@ from app.models import User, Wallet
 from app.schemas import UserCreate, UserLogin, Token, UserResponse
 from app.dependencies import get_current_user
 
-router = APIRouter(prefix="/auth", tags=["Authentication & JWT"])
+router = APIRouter(prefix="/auth", tags=["Strict Authentication & JWT"])
 
 def hash_password(password: str) -> str:
     pwd_bytes = password.encode("utf-8")[:72]
@@ -97,42 +97,6 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
             "handle": user.handle,
             "role": user.role,
             "credits": credits
-        }
-    }
-
-@router.post("/guest-demo", response_model=Token)
-async def guest_demo_login(db: AsyncSession = Depends(get_db)):
-    """Instant 1-Click Guest Demo Bypass for judges preloaded with 500 test credits and valid JWT."""
-    guest_id = f"usr_guest_{uuid.uuid4().hex[:6]}"
-    guest_email = f"{guest_id}@agenthub.demo"
-    guest_handle = f"judge_{guest_id[-4:]}"
-    
-    new_user = User(
-        id=guest_id,
-        email=guest_email,
-        handle=guest_handle,
-        hashed_password=hash_password("demo_session_secret"),
-        role="consumer"
-    )
-    new_wallet = Wallet(
-        id=f"wal_{uuid.uuid4().hex[:10]}",
-        user_id=guest_id,
-        balance_credits=500.0
-    )
-    db.add(new_user)
-    db.add(new_wallet)
-    await db.commit()
-    
-    token = create_access_token({"sub": guest_id, "email": guest_email, "role": "consumer"})
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {
-            "id": guest_id,
-            "email": guest_email,
-            "handle": guest_handle,
-            "role": "consumer",
-            "credits": 500.0
         }
     }
 

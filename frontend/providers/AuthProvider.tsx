@@ -18,7 +18,6 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
   register: (email: string, pass: string, handle: string) => Promise<boolean>;
-  loginAsGuest: () => Promise<void>;
   logout: () => void;
   updateCredits: (delta: number) => void;
   deductCredits: (amount: number) => void;
@@ -97,17 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
         await refreshUser();
-      } else {
-        // Automatically provision 1-click guest demo account for judges
-        const demoUser: User = {
-          id: "usr_guest_demo",
-          email: "developer@agenthub.ai",
-          handle: "judge_demo",
-          role: "consumer",
-          credits: 500,
-        };
-        setUser(demoUser);
-        setCredits(500);
       }
       setLoading(false);
     };
@@ -169,31 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginAsGuest = async (): Promise<void> => {
-    try {
-      const res = await fetch("http://localhost:8000/api/auth/guest-demo", {
-        method: "POST"
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setToken(data.access_token);
-        const u: User = {
-          id: data.user.id,
-          email: data.user.email,
-          handle: data.user.handle,
-          role: data.user.role,
-          credits: round2(data.user.credits)
-        };
-        setUser(u);
-        setCredits(round2(data.user.credits));
-        localStorage.setItem("agenthub_token", data.access_token);
-        localStorage.setItem("agenthub_user", JSON.stringify(u));
-      }
-    } catch {
-      // fallback
-    }
-  };
-
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -229,7 +192,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         register,
-        loginAsGuest,
         logout,
         updateCredits,
         deductCredits,

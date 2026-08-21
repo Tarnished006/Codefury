@@ -2,16 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Zap,
   Lock,
   Mail,
   User as UserIcon,
-  ArrowRight,
-  Sparkles,
-  ShieldCheck,
-  CheckCircle2,
   AlertCircle
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
@@ -19,7 +14,7 @@ import { useAuthContext } from "@/providers/AuthProvider";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, register, loginAsGuest, isAuthenticated, user } = useAuthContext();
+  const { login, register } = useAuthContext();
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("developer@agenthub.ai");
@@ -39,7 +34,7 @@ export default function LoginPage() {
         if (ok) {
           router.push("/");
         } else {
-          setError("Invalid email or password. You can also use the 1-Click Guest Demo below.");
+          setError("Invalid email or password.");
         }
       } else {
         const ok = await register(email, password, handle);
@@ -51,16 +46,6 @@ export default function LoginPage() {
       }
     } catch {
       setError("An unexpected error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGuestDemo = async () => {
-    setLoading(true);
-    try {
-      await loginAsGuest();
-      router.push("/");
     } finally {
       setLoading(false);
     }
@@ -84,34 +69,6 @@ export default function LoginPage() {
             <p className="text-xs font-mono text-[#64748B] mt-1">
               Autonomous Model Network & Economic Mesh
             </p>
-          </div>
-
-          {/* ── Prominent 1-Click Instant Guest Demo Button for Judges ── */}
-          <div className="mb-6 p-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[0.68rem] font-mono text-[#64748B] uppercase font-bold">
-                JUDGES // INSTANT ACCESS
-              </span>
-              <span className="text-[0.62rem] font-mono text-[#10B981] font-bold">
-                +500 CREDITS
-              </span>
-            </div>
-            <button
-              onClick={handleGuestDemo}
-              disabled={loading}
-              className="w-full bg-black text-white hover:bg-zinc-800 transition-colors py-2.5 px-4 rounded-md text-xs font-sans font-bold flex items-center justify-center gap-2 shadow-xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>⚡ 1-Click Instant Guest Demo</span>
-            </button>
-          </div>
-
-          <div className="relative flex py-2 items-center mb-6">
-            <div className="flex-grow border-t border-[#E2E8F0]"></div>
-            <span className="flex-shrink mx-3 text-[0.65rem] font-mono text-[#94A3B8] uppercase">
-              Or continue with credentials
-            </span>
-            <div className="flex-grow border-t border-[#E2E8F0]"></div>
           </div>
 
           {error && (
@@ -179,7 +136,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-outline py-2 text-xs font-semibold mt-2 justify-center"
+              className="w-full btn-solid-black py-2.5 text-xs font-semibold mt-2 justify-center"
             >
               {loading ? "Authenticating..." : mode === "login" ? "Sign In" : "Create Account"}
             </button>

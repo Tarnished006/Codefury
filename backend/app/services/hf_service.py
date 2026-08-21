@@ -41,13 +41,15 @@ class HuggingFaceService:
         index = 0
 
         try:
-            # Live AsyncInferenceClient chat streaming
-            stream = await self.client.chat.completions.create(
-                model=repo_id,
-                messages=formatted_messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=True
+            stream = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    model=repo_id,
+                    messages=formatted_messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=True
+                ),
+                timeout=4.0
             )
 
             async for chunk in stream:
@@ -70,7 +72,7 @@ class HuggingFaceService:
             }
 
         except Exception as e:
-            logger.warning(f"Live HF streaming failed for {repo_id} ({e}), falling back to deterministic stream.")
+            logger.warning(f"Live HF streaming failed for {repo_id} ({e}), falling back to dynamic prompt generator.")
             async for chunk in generate_simulated_stream(model_id, prompt):
                 yield chunk
 
@@ -93,12 +95,15 @@ class HuggingFaceService:
         messages.append({"role": "user", "content": prompt})
 
         try:
-            res = await self.client.chat.completions.create(
-                model=model_id,
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=False
+            res = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    model=model_id,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=False
+                ),
+                timeout=2.5
             )
             if res.choices and res.choices[0].message.content:
                 return res.choices[0].message.content
