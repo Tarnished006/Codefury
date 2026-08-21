@@ -1,0 +1,7 @@
+from app.routers.auth import router as auth_router
+from app.routers.models import router as models_router
+from app.routers.arena import router as arena_router
+from app.routers.orchestrator import router as orchestrator_router
+from app.routers.audit import router as audit_router
+from app.routers.sandbox import router as sandbox_router
+from app.routers.wallet import router as wallet_router
