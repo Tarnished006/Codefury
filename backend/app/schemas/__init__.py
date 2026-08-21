@@ -144,6 +144,11 @@ class OWASPAuditResponse(BaseModel):
     audit_summary: str
     vulnerabilities: List[Dict[str, Any]]
     audited_at: datetime
+    # Enriched live audit fields
+    reasoning: Optional[str] = None
+    probe_outputs: Optional[List[Dict[str, Any]]] = None
+    evaluated_by: Optional[str] = None
+    repo_id: Optional[str] = None
 
 # --- Sandbox / Deployment Schemas ---
 class ExecuteSnippetRequest(BaseModel):
@@ -158,6 +163,8 @@ class ExecuteSnippetResponse(BaseModel):
     execution_time_ms: int
     tokens_used: int
     cost_deducted: float
+    exit_code: Optional[int] = None
+    session_id: Optional[str] = None
 
 class CreateApiKeyRequest(BaseModel):
     name: str = "Live Production Key"

@@ -1,0 +1,36 @@
+{
+  "_comment": "AgentHub MCP Server — Add this block to your Claude Code / Claude Desktop config.",
+
+  "mcpServers": {
+    "agenthub": {
+      "command": "python",
+      "args": ["backend/mcp_server.py"],
+      "cwd": "C:/Users/Tharun R Gowda/Desktop/codefury",
+      "env": {
+        "HF_TOKEN": "<YOUR_HF_TOKEN>",
+        "GROQ_API_KEY": "<YOUR_GROQ_API_KEY>",
+        "PYTHONPATH": "backend"
+      },
+      "description": "AgentHub AI Marketplace — 5 MCP tools: list_models, run_inference, audit_model, execute_code, orchestrate"
+    }
+  },
+
+  "_claude_desktop_path": "%APPDATA%/Claude/claude_desktop_config.json",
+  "_claude_code_path":    "%APPDATA%/Claude/claude_code_config.json",
+
+  "_tools": [
+    "list_models    — Browse 51+ Hugging Face model endpoints (filterable by domain)",
+    "run_inference  — LLM completion against any model_id (non-streaming)",
+    "audit_model    — Full 5-probe OWASP LLM-as-a-Judge red-team security audit",
+    "execute_code   — Isolated Python subprocess execution with 5s hard timeout",
+    "orchestrate    — Natural-language goal → Groq Meta-Agent DAG decomposition"
+  ],
+
+  "_quick_start": [
+    "1. pip install mcp  (in backend venv)",
+    "2. Copy the 'mcpServers.agenthub' block into your Claude Desktop config.",
+    "3. Replace <YOUR_HF_TOKEN> and <YOUR_GROQ_API_KEY> with real values from .env.",
+    "4. Restart Claude Desktop — AgentHub tools appear in the tool selector.",
+    "5. Try: 'Use the list_models tool to show CODE GEN models'"
+  ]
+}

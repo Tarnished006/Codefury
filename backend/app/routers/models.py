@@ -1,6 +1,6 @@
 import json
 import uuid
-import os
+import hashlib
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -17,8 +17,8 @@ from app.services.ledger_service import ledger_service
 
 router = APIRouter(prefix="/models", tags=["AI Models & Real-Time Token Metering"])
 
-DEPLOYMENTS_DIR = Path("deployments")
-DEPLOYMENTS_DIR.mkdir(exist_ok=True)
+ARTIFACTS_DIR = Path("backend/artifacts")
+ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.get("", response_model=List[AIModelResponse])
 async def list_models(domain: Optional[str] = None, db: AsyncSession = Depends(get_db)):
@@ -85,17 +85,25 @@ async def upload_model_artifact(
     user_id: str = Form("usr_guest_demo"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Uploads custom weights / ONNX / PKL / Python artifact and registers live endpoint."""
+    """
+    Uploads custom weights / ONNX / PKL / Python artifact to persistent blob storage.
+    - Stores file at: backend/artifacts/{deployment_id}/{filename}
+    - Returns SHA-256 content hash for integrity verification.
+    - Registers live streaming endpoint in the Deployment DB table.
+    """
     deployment_id = f"dep_{uuid.uuid4().hex[:10]}"
-    target_dir = DEPLOYMENTS_DIR / deployment_id
+    target_dir = ARTIFACTS_DIR / deployment_id
     target_dir.mkdir(parents=True, exist_ok=True)
-    
-    file_path = target_dir / file.filename
+
     content = await file.read()
+    file_path = target_dir / file.filename
     file_path.write_bytes(content)
-    
+
+    # SHA-256 integrity hash
+    sha256_hash = hashlib.sha256(content).hexdigest()
+
     endpoint_url = f"http://localhost:8000/api/models/{deployment_id}/stream"
-    
+
     # Register deployment in database
     dep = Deployment(
         id=deployment_id,
@@ -106,13 +114,15 @@ async def upload_model_artifact(
     )
     db.add(dep)
     await db.commit()
-    
+
     return {
-        "deployment_id": deployment_id,
-        "filename": file.filename,
-        "size_bytes": len(content),
-        "endpoint_url": endpoint_url,
-        "status": "DEPLOYED",
+        "deployment_id":   deployment_id,
+        "filename":        file.filename,
+        "size_bytes":      len(content),
+        "sha256":          sha256_hash,
+        "storage_path":    str(file_path),
+        "endpoint_url":    endpoint_url,
+        "status":          "DEPLOYED",
         "message": f"Artifact {file.filename} uploaded and provisioned on GPU cluster."
     }
 
