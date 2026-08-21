@@ -1,14 +1,14 @@
-# AgentNet — AI Model Marketplace & Autonomous Deployment Platform
+# AgentHub — AI Model Marketplace & Autonomous Deployment Platform
 
-> The Global Standard for Autonomous Intelligence. Discover, test-drive, and deploy open-weight Hugging Face models on a high-performance orchestration layer.
+> The Global Standard for Autonomous Intelligence. Discover, benchmark, and deploy open-weight Hugging Face models across high-throughput GPU clusters with autonomous Meta-Agent DAG orchestration and automated OWASP red-team audits.
 
 ---
 
-## 🌟 Overview
+## 🌟 Core Architecture
 
-AgentNet is an end-to-end AI marketplace and autonomous task orchestration platform. It bridges the gap between open-source Hugging Face model creators and production enterprise consumers with:
+AgentHub bridges the gap between open-source Hugging Face model repositories and production enterprise deployment:
 
-- 🌐 **Interactive 3D WebGL Mesh (`cobe`):** Real-time global network visualization displaying active inference nodes and routing throughput.
+- 🌐 **3D Dotted Earth Orbit:** Real-time global network visualization displaying active inference nodes and routing throughput.
 - ⚡ **Meta-Agent Orchestrator:** Autonomous task broker that parses multi-step user intents, hires specialized domain models, and aggregates unified outputs.
 - ⚔️ **Model Matchmaker Arena:** Side-by-side split-screen streaming sandbox comparing P50 latency, token velocity, and inference quality across 3 concurrent models.
 - 🛡️ **OWASP Red-Team Auditor:** Automated security radar measuring model resistance against Prompt Injection, Task Hijacking, and Data Leakage.
@@ -21,7 +21,7 @@ AgentNet is an end-to-end AI marketplace and autonomous task orchestration platf
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript
 - **Styling:** Tailwind CSS v4, Custom Structural Blueprint Grid
 - **3D / Visualization:** WebGL, COBE 2.0, Framer Motion
-- **Icons & Primitives:** Lucide React, Radix UI
+- **Icons & Primitives:** Lucide React
 
 ---
 
