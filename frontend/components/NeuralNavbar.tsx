@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Cpu, Terminal, Shield, Zap, GitCompare, Landmark, Code2 } from "lucide-react";
+import { Menu, X, Cpu, Terminal, Shield, Zap, GitCompare, Landmark, Code2, Wallet } from "lucide-react";
 import { useAuthContext } from "@/providers/AuthProvider";
 
 export default function NeuralNavbar() {
@@ -23,6 +23,7 @@ export default function NeuralNavbar() {
     { href: "/arena", label: "ARENA", icon: GitCompare },
     { href: "/security", label: "SECURITY", icon: Shield, iconColor: "text-[#10B981]" },
     { href: "/creator", label: "CREATOR_STUDIO", icon: Landmark },
+    { href: "/wallet", label: "WALLET", icon: Wallet },
   ];
 
   return (
@@ -77,10 +78,14 @@ export default function NeuralNavbar() {
               <span className="font-bold text-black">{p50}ms</span>
             </div>
 
-            {/* Wallet credit badge */}
-            <div className="px-2.5 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-md text-xs font-mono font-bold text-black">
-              CR: {credits}
-            </div>
+            {/* Wallet credit badge (Clickable to /wallet) */}
+            <Link
+              href="/wallet"
+              className="px-2.5 py-1 bg-[#F1F5F9] border border-[#E2E8F0] hover:border-black rounded-md text-xs font-mono font-bold text-black transition-colors flex items-center gap-1.5"
+            >
+              <Wallet className="w-3 h-3 text-[#0284C7]" />
+              <span>CR: {credits}</span>
+            </Link>
 
             {/* Deployments / Sandbox Button */}
             <Link
