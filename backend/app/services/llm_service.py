@@ -6,6 +6,15 @@ from app.config import settings
 
 logger = logging.getLogger("agenthub.groq")
 
+# Verified active Groq models on this account
+ACTIVE_GROQ_MODELS = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.6-27b",
+    "groq/compound",
+    "groq/compound-mini",
+]
+
 class GroqLLMService:
     def __init__(self):
         self._client: Optional[AsyncGroq] = None
@@ -16,7 +25,7 @@ class GroqLLMService:
             return None
         if self._client is None or getattr(self._client, "_api_key", None) != settings.GROQ_API_KEY:
             try:
-                self._client = AsyncGroq(api_key=settings.GROQ_API_KEY, timeout=5.0)
+                self._client = AsyncGroq(api_key=settings.GROQ_API_KEY, timeout=30.0)
             except Exception as e:
                 logger.warning(f"Failed to initialize AsyncGroq: {e}")
                 self._client = None
@@ -30,7 +39,7 @@ class GroqLLMService:
         temperature: float = 0.1,
         max_tokens: int = 1024
     ) -> str:
-        """Executes high-speed async LLM completion via Groq with automatic model fallback."""
+        """Executes high-speed async LLM completion via Groq with verified model fallback."""
         groq_client = self.client
         if not groq_client:
             return ""
@@ -40,7 +49,8 @@ class GroqLLMService:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        target_models = [model, "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+        # Try requested model first, then verified active models
+        target_models = [model] + [m for m in ACTIVE_GROQ_MODELS if m != model]
 
         for m in target_models:
             try:
@@ -51,12 +61,12 @@ class GroqLLMService:
                         temperature=temperature,
                         max_tokens=max_tokens
                     ),
-                    timeout=4.0
+                    timeout=20.0
                 )
                 if res.choices and res.choices[0].message.content:
                     return res.choices[0].message.content
             except Exception as e:
-                logger.warning(f"Groq completion on {m} failed or timed out: {e}")
+                logger.warning(f"Groq completion on {m} failed: {e}")
                 continue
 
         return ""

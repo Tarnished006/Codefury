@@ -103,13 +103,14 @@ class HuggingFaceService:
                     temperature=temperature,
                     stream=False
                 ),
-                timeout=2.5
+                timeout=12.0   # increased from 2.5s — HF cold-start needs headroom
             )
             if res.choices and res.choices[0].message.content:
                 return res.choices[0].message.content
         except Exception as e:
             logger.warning(f"Live completion error on {model_id}: {e}")
-            
+
         return ""
+
 
 hf_service = HuggingFaceService()
