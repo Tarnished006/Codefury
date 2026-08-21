@@ -18,6 +18,7 @@ class User(Base):
     deployments = relationship("Deployment", back_populates="user")
     api_keys = relationship("ApiKey", back_populates="user")
     orchestrations = relationship("OrchestrationJob", back_populates="user")
+    transactions = relationship("LedgerTransaction", back_populates="user")
 
 class Wallet(Base):
     __tablename__ = "wallets"
@@ -30,13 +31,30 @@ class Wallet(Base):
     
     user = relationship("User", back_populates="wallet")
 
+class Creator(Base):
+    __tablename__ = "creators"
+    
+    id = Column(String(64), primary_key=True, index=True) # e.g. "creator_meta", "creator_deepseek"
+    name = Column(String(255), nullable=False)
+    handle = Column(String(100), unique=True, nullable=False)
+    bio = Column(Text, nullable=True)
+    avatar_url = Column(String(512), nullable=True)
+    total_earnings_credits = Column(Float, default=0.0)
+    pending_payout_credits = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    models = relationship("AIModel", back_populates="creator")
+    payouts = relationship("CreatorPayout", back_populates="creator")
+    transactions = relationship("LedgerTransaction", back_populates="creator")
+
 class AIModel(Base):
     __tablename__ = "ai_models"
     
-    id = Column(String(64), primary_key=True, index=True)  # e.g. "llama3", "deepseek-coder"
+    id = Column(String(64), primary_key=True, index=True)
+    creator_id = Column(String(64), ForeignKey("creators.id"), nullable=True)
     name = Column(String(255), nullable=False)
-    repo_id = Column(String(255), nullable=False)          # e.g. "meta-llama/Meta-Llama-3-8B-Instruct"
-    domain = Column(String(64), index=True, nullable=False) # e.g. "LLM_CHAT", "CODE_GEN", "HEALTHCARE"
+    repo_id = Column(String(255), nullable=False)
+    domain = Column(String(64), index=True, nullable=False)
     task_tag = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     context_length = Column(Integer, default=8192)
@@ -47,8 +65,44 @@ class AIModel(Base):
     is_online = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
+    creator = relationship("Creator", back_populates="models")
     audits = relationship("OWASPAudit", back_populates="model", cascade="all, delete-orphan")
     deployments = relationship("Deployment", back_populates="model")
+    transactions = relationship("LedgerTransaction", back_populates="model")
+
+class LedgerTransaction(Base):
+    __tablename__ = "ledger_transactions"
+    
+    id = Column(String(36), primary_key=True, index=True)
+    transaction_type = Column(String(32), nullable=False) # "INFERENCE_METERING", "WALLET_TOPUP", "CREATOR_PAYOUT"
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    model_id = Column(String(64), ForeignKey("ai_models.id"), nullable=True)
+    creator_id = Column(String(64), ForeignKey("creators.id"), nullable=True)
+    tokens_metered = Column(Integer, default=0)
+    cost_credits = Column(Float, default=0.0)
+    creator_royalty_credits = Column(Float, default=0.0) # 80% revenue split
+    platform_fee_credits = Column(Float, default=0.0)    # 20% platform revenue
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    user = relationship("User", back_populates="transactions")
+    model = relationship("AIModel", back_populates="transactions")
+    creator = relationship("Creator", back_populates="transactions")
+
+class CreatorPayout(Base):
+    __tablename__ = "creator_payouts"
+    
+    id = Column(String(36), primary_key=True, index=True)
+    creator_id = Column(String(64), ForeignKey("creators.id"), nullable=False)
+    amount_credits = Column(Float, nullable=False)
+    amount_usd = Column(Float, nullable=False) # 1 Credit = $0.01 USD
+    payout_method = Column(String(32), default="stripe_connect") # "stripe_connect", "crypto_usdc"
+    destination_address = Column(String(255), nullable=False)
+    reference_id = Column(String(64), nullable=False)
+    status = Column(String(32), default="COMPLETED")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    creator = relationship("Creator", back_populates="payouts")
 
 class OWASPAudit(Base):
     __tablename__ = "owasp_audits"
@@ -100,10 +154,12 @@ class OrchestrationJob(Base):
     id = Column(String(36), primary_key=True, index=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     goal_prompt = Column(Text, nullable=False)
+    budget_strategy = Column(String(64), default="HIGH_PERFORMANCE_PREMIUM")
     status = Column(String(32), default="COMPLETED")
     dag_plan = Column(JSON, default=list)
     final_output = Column(Text, nullable=True)
     total_tokens = Column(Integer, default=0)
+    estimated_cost_credits = Column(Float, default=0.0)
     execution_time_ms = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     

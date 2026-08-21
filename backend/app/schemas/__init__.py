@@ -25,6 +25,38 @@ class UserResponse(BaseModel):
     credits: float
     created_at: datetime
 
+# --- Creator & Marketplace Schemas ---
+class CreatorBase(BaseModel):
+    id: str
+    name: str
+    handle: str
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    total_earnings_credits: float
+    pending_payout_credits: float
+
+class CreatorResponse(CreatorBase):
+    models_count: int = 0
+    created_at: datetime
+
+class PayoutRequest(BaseModel):
+    creator_id: str
+    amount_credits: float = Field(..., gt=0)
+    payout_method: str = "stripe_connect" # "stripe_connect", "crypto_usdc"
+    destination_address: str = Field(..., min_length=4)
+
+class PayoutResponse(BaseModel):
+    payout_id: str
+    creator_id: str
+    amount_credits: float
+    amount_usd: float
+    payout_method: str
+    destination_address: str
+    reference_id: str
+    status: str
+    remaining_balance_credits: float
+    created_at: datetime
+
 # --- Model Schemas ---
 class AIModelBase(BaseModel):
     id: str
@@ -39,12 +71,14 @@ class AIModelBase(BaseModel):
     price_per_1k: float
     security_score: int
     is_online: bool
+    creator_id: Optional[str] = None
 
 class AIModelResponse(AIModelBase):
-    pass
+    creator_name: Optional[str] = None
 
 class ModelInferenceRequest(BaseModel):
     prompt: str
+    user_id: Optional[str] = None
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.7
     stream: bool = True
@@ -53,16 +87,18 @@ class ModelInferenceRequest(BaseModel):
 class ArenaStreamRequest(BaseModel):
     prompt: str
     model_ids: List[str] = Field(..., min_length=2, max_length=3)
+    user_id: Optional[str] = None
 
 class ArenaVoteRequest(BaseModel):
     session_id: str
     winner_model_id: str
     notes: Optional[str] = None
 
-# --- Orchestrator Schemas ---
+# --- Budget-Aware Orchestrator Schemas ---
 class OrchestrateRequest(BaseModel):
     goal: str = Field(..., min_length=5, description="High-level natural language intent or multi-stage task")
     user_id: Optional[str] = None
+    max_budget_credits: Optional[float] = None
 
 class DAGStep(BaseModel):
     step_index: int
@@ -72,11 +108,15 @@ class DAGStep(BaseModel):
     assigned_model_name: str
     status: str
     latency_ms: int
+    cost_credits: float
     output: Optional[str] = None
 
 class OrchestrationResponse(BaseModel):
     job_id: str
     goal: str
+    budget_strategy: str # "HIGH_PERFORMANCE_PREMIUM" vs "COST_OPTIMIZED_COMPACT"
+    balance_checked: float
+    estimated_cost_credits: float
     status: str
     dag_plan: List[DAGStep]
     final_output: str
@@ -119,7 +159,7 @@ class ApiKeyResponse(BaseModel):
     api_key: str
     created_at: datetime
 
-# --- Wallet Schemas ---
+# --- Double-Entry Ledger & Wallet Schemas ---
 class WalletResponse(BaseModel):
     user_id: str
     balance_credits: float
@@ -128,3 +168,31 @@ class WalletResponse(BaseModel):
 
 class TopupRequest(BaseModel):
     amount_credits: float = 100.0
+
+class CheckoutRequest(BaseModel):
+    user_id: str
+    credits_package: int = 500 # 500, 1000, 5000
+    payment_method: str = "simulated_card"
+    card_last4: Optional[str] = "4242"
+
+class CheckoutResponse(BaseModel):
+    transaction_id: str
+    user_id: str
+    credits_added: int
+    amount_usd: float
+    new_balance_credits: float
+    status: str
+    created_at: datetime
+
+class LedgerTransactionResponse(BaseModel):
+    id: str
+    transaction_type: str
+    user_id: Optional[str] = None
+    model_id: Optional[str] = None
+    creator_id: Optional[str] = None
+    tokens_metered: int
+    cost_credits: float
+    creator_royalty_credits: float
+    platform_fee_credits: float
+    description: Optional[str] = None
+    created_at: datetime
