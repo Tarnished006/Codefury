@@ -1,27 +1,38 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import createGlobe from "cobe";
 
 export default function OrchestratorGlobe() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState(500);
 
   useEffect(() => {
     let phi = 0;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    // Fixed internal resolution for crystal-clear retina rendering
-    const size = 520;
+    const updateSize = () => {
+      const containerWidth = container.offsetWidth || 500;
+      const currentSize = Math.min(containerWidth, 520);
+      setSize(currentSize);
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+
     const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 2 : 2, 2);
+    const globeSize = Math.min(container.offsetWidth || 500, 520);
 
     let globe: ReturnType<typeof createGlobe> | null = null;
 
     try {
       globe = createGlobe(canvas, {
         devicePixelRatio: dpr,
-        width: size * dpr,
-        height: size * dpr,
+        width: globeSize * dpr,
+        height: globeSize * dpr,
         phi: 0,
         theta: 0.25,
         dark: 0,
@@ -59,13 +70,17 @@ export default function OrchestratorGlobe() {
 
     return () => {
       globe?.destroy();
+      window.removeEventListener("resize", updateSize);
     };
   }, []);
 
   return (
-    <div className="relative w-full max-w-[540px] aspect-square flex items-center justify-center select-none">
-      {/* Outer subtle atmospheric soft white/gray glow matching image */}
-      <div className="absolute inset-4 rounded-full bg-white shadow-[0_20px_50px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04),inset_0_0_30px_rgba(0,0,0,0.03)] pointer-events-none" />
+    <div
+      ref={containerRef}
+      className="relative w-full max-w-[320px] sm:max-w-[420px] md:max-w-[500px] aspect-square flex items-center justify-center select-none mx-auto"
+    >
+      {/* Outer subtle atmospheric soft white/gray glow */}
+      <div className="absolute inset-2 sm:inset-4 rounded-full bg-white shadow-[0_15px_40px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04),inset_0_0_24px_rgba(0,0,0,0.03)] pointer-events-none" />
 
       {/* WebGL Canvas */}
       <canvas
@@ -74,64 +89,64 @@ export default function OrchestratorGlobe() {
         style={{ width: "100%", height: "100%", contain: "layout paint size" }}
       />
 
-      {/* Telemetry Node Labels & Badges matching reference image pixel-perfect */}
+      {/* Responsive Telemetry Node Labels matching image */}
       
       {/* Top Node: arn1 */}
-      <div className="absolute z-20 top-[8%] left-[28%] pointer-events-none flex flex-col items-center">
-        <span className="text-black text-[0.65rem] mb-0.5">▲</span>
-        <span className="bg-white border border-[#E4E4E7] text-black text-[0.68rem] font-mono font-semibold px-2 py-0.5 rounded shadow-xs">
+      <div className="absolute z-20 top-[6%] sm:top-[8%] left-[26%] sm:left-[28%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-center">
+        <span className="text-black text-[0.6rem] sm:text-[0.65rem] mb-0.5">▲</span>
+        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
           arn1
         </span>
       </div>
 
       {/* Left Node: bom1 + req/s badges */}
-      <div className="absolute z-20 top-[18%] left-[12%] pointer-events-none flex flex-col items-start gap-1">
-        <span className="bg-black text-white text-[0.62rem] font-mono font-semibold px-2 py-0.5 rounded shadow-sm">
+      <div className="absolute z-20 top-[16%] sm:top-[18%] left-[6%] sm:left-[12%] pointer-events-none flex flex-col items-start gap-1 scale-90 sm:scale-100 origin-top-left">
+        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
           273k req/s
         </span>
-        <div className="flex items-center gap-1">
-          <span className="bg-black text-white text-[0.62rem] font-mono font-semibold px-2 py-0.5 rounded shadow-sm">
+        <div className="hidden xs:flex items-center gap-1">
+          <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
             244k req/s
           </span>
         </div>
-        <div className="flex flex-col items-center ml-4 mt-0.5">
-          <span className="text-black text-[0.65rem]">▲</span>
-          <span className="bg-white border border-[#E4E4E7] text-black text-[0.68rem] font-mono font-semibold px-2 py-0.5 rounded shadow-xs">
+        <div className="flex flex-col items-center ml-2 sm:ml-4 mt-0.5">
+          <span className="text-black text-[0.6rem] sm:text-[0.65rem]">▲</span>
+          <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
             bom1
           </span>
         </div>
       </div>
 
       {/* Center Node: sin1 */}
-      <div className="absolute z-20 top-[38%] left-[38%] pointer-events-none flex flex-col items-center">
-        <span className="text-black text-[0.65rem] mb-0.5">▲</span>
-        <span className="bg-white border border-[#E4E4E7] text-black text-[0.68rem] font-mono font-semibold px-2 py-0.5 rounded shadow-xs">
+      <div className="absolute z-20 top-[36%] sm:top-[38%] left-[36%] sm:left-[38%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-center">
+        <span className="text-black text-[0.6rem] sm:text-[0.65rem] mb-0.5">▲</span>
+        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
           sin1
         </span>
       </div>
 
-      {/* Right Top Node: hnd1 + 297k req/s */}
-      <div className="absolute z-20 top-[14%] right-[18%] pointer-events-none flex flex-col items-center">
-        <span className="bg-black text-white text-[0.62rem] font-mono font-semibold px-2 py-0.5 rounded shadow-sm mb-1">
+      {/* Right Top Node: hnd1 */}
+      <div className="absolute z-20 top-[12%] sm:top-[14%] right-[12%] sm:right-[18%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-top-right">
+        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs mb-1">
           297k req/s
         </span>
-        <span className="text-black text-[0.65rem]">▲</span>
-        <span className="bg-white border border-[#E4E4E7] text-black text-[0.68rem] font-mono font-semibold px-2 py-0.5 rounded shadow-xs">
+        <span className="text-black text-[0.6rem] sm:text-[0.65rem]">▲</span>
+        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
           hnd1
         </span>
       </div>
 
       {/* Right Middle Badge: 247k req/s */}
-      <div className="absolute z-20 top-[42%] right-[22%] pointer-events-none">
-        <span className="bg-black text-white text-[0.62rem] font-mono font-semibold px-2 py-0.5 rounded shadow-sm">
+      <div className="absolute z-20 top-[42%] right-[14%] sm:right-[22%] pointer-events-none scale-90 sm:scale-100 origin-center">
+        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
           247k req/s
         </span>
       </div>
 
       {/* Bottom Right Node: syd1 */}
-      <div className="absolute z-20 bottom-[22%] right-[28%] pointer-events-none flex flex-col items-center">
-        <span className="text-black text-[0.65rem]">▲</span>
-        <span className="bg-white border border-[#E4E4E7] text-black text-[0.68rem] font-mono font-semibold px-2 py-0.5 rounded shadow-xs">
+      <div className="absolute z-20 bottom-[18%] sm:bottom-[22%] right-[22%] sm:right-[28%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-bottom-right">
+        <span className="text-black text-[0.6rem] sm:text-[0.65rem]">▲</span>
+        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
           syd1
         </span>
       </div>
