@@ -51,19 +51,11 @@ export default function OrchestratorGlobe() {
           { location: [35.5494, 139.7798], size: 0.06 }, // hnd1
           { location: [-33.8688, 151.2093], size: 0.06 }, // syd1
         ],
-        arcs: [
-          { from: [19.0760, 72.8777], to: [1.3521, 103.8198], color: [0.1, 0.1, 0.1] },  // bom1 -> sin1
-          { from: [35.5494, 139.7798], to: [-33.8688, 151.2093], color: [0.1, 0.1, 0.1] }, // hnd1 -> syd1
-          { from: [59.3293, 18.0686], to: [19.0760, 72.8777], color: [0.1, 0.1, 0.1] },  // arn1 -> bom1
-        ],
-        arcColor: [0.15, 0.15, 0.15],
-        arcWidth: 1.2,
-        arcHeight: 0.35,
-        onRender: (state) => {
+        onRender: (state: any) => {
           phi += 0.0035;
           state.phi = phi;
         },
-      });
+      } as any);
     } catch (e) {
       console.error("Globe init error", e);
     }
@@ -89,29 +81,24 @@ export default function OrchestratorGlobe() {
         style={{ width: "100%", height: "100%", contain: "layout paint size" }}
       />
 
-      {/* Responsive Telemetry Node Labels matching image */}
+      {/* Responsive Telemetry Node Labels */}
       
       {/* Top Node: arn1 */}
       <div className="absolute z-20 top-[6%] sm:top-[8%] left-[26%] sm:left-[28%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-center">
         <span className="text-black text-[0.6rem] sm:text-[0.65rem] mb-0.5">▲</span>
-        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
+        <span className="bg-white border border-black/10 text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 shadow-xs uppercase">
           arn1
         </span>
       </div>
 
       {/* Left Node: bom1 + req/s badges */}
       <div className="absolute z-20 top-[16%] sm:top-[18%] left-[6%] sm:left-[12%] pointer-events-none flex flex-col items-start gap-1 scale-90 sm:scale-100 origin-top-left">
-        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
+        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 shadow-xs uppercase">
           273k req/s
         </span>
-        <div className="hidden xs:flex items-center gap-1">
-          <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
-            244k req/s
-          </span>
-        </div>
         <div className="flex flex-col items-center ml-2 sm:ml-4 mt-0.5">
           <span className="text-black text-[0.6rem] sm:text-[0.65rem]">▲</span>
-          <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
+          <span className="bg-white border border-black/10 text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 shadow-xs uppercase">
             bom1
           </span>
         </div>
@@ -120,33 +107,26 @@ export default function OrchestratorGlobe() {
       {/* Center Node: sin1 */}
       <div className="absolute z-20 top-[36%] sm:top-[38%] left-[36%] sm:left-[38%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-center">
         <span className="text-black text-[0.6rem] sm:text-[0.65rem] mb-0.5">▲</span>
-        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
+        <span className="bg-white border border-black/10 text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 shadow-xs uppercase">
           sin1
         </span>
       </div>
 
       {/* Right Top Node: hnd1 */}
       <div className="absolute z-20 top-[12%] sm:top-[14%] right-[12%] sm:right-[18%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-top-right">
-        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs mb-1">
+        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 shadow-xs mb-1 uppercase">
           297k req/s
         </span>
         <span className="text-black text-[0.6rem] sm:text-[0.65rem]">▲</span>
-        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
+        <span className="bg-white border border-black/10 text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 shadow-xs uppercase">
           hnd1
-        </span>
-      </div>
-
-      {/* Right Middle Badge: 247k req/s */}
-      <div className="absolute z-20 top-[42%] right-[14%] sm:right-[22%] pointer-events-none scale-90 sm:scale-100 origin-center">
-        <span className="bg-black text-white text-[0.55rem] sm:text-[0.62rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
-          247k req/s
         </span>
       </div>
 
       {/* Bottom Right Node: syd1 */}
       <div className="absolute z-20 bottom-[18%] sm:bottom-[22%] right-[22%] sm:right-[28%] pointer-events-none flex flex-col items-center scale-90 sm:scale-100 origin-bottom-right">
         <span className="text-black text-[0.6rem] sm:text-[0.65rem]">▲</span>
-        <span className="bg-white border border-[#E2E8F0] text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded shadow-xs">
+        <span className="bg-white border border-black/10 text-black text-[0.6rem] sm:text-[0.68rem] font-mono font-semibold px-1.5 sm:px-2 py-0.5 shadow-xs uppercase">
           syd1
         </span>
       </div>

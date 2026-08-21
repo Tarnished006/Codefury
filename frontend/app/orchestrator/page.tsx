@@ -14,7 +14,9 @@ import {
   Layers,
   ChevronRight,
   Terminal,
-  Play
+  Play,
+  FileCheck2,
+  Check
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { orchestrateDAG } from "@/lib/api";
@@ -26,11 +28,11 @@ const PRESET_GOALS = [
   },
   {
     tag: "CLINICAL PHARMACOLOGY",
-    prompt: "Analyze medical drug interactions and output FHIR code"
+    prompt: "Analyze medical drug interactions between Warfarin and NSAIDs with dosage contraindications"
   },
   {
-    tag: "BACKEND API DEPLOY",
-    prompt: "Synthesize high-throughput FastAPI streaming endpoint with Pydantic v2 validation"
+    tag: "CRYPTO TRADING API",
+    prompt: "Build high-throughput REST API for crypto trading with real-time WebSocket order book and risk telemetry"
   }
 ];
 
@@ -42,8 +44,9 @@ export default function OrchestratorPage() {
   const [selectedStep, setSelectedStep] = useState<number>(0);
 
   const handleRun = async () => {
-    if (!goal.trim()) return;
+    if (!goal.trim() || loading) return;
     setLoading(true);
+    setResult(null);
     try {
       const maxBudget = budgetMode === "low" ? 0.5 : 100.0;
       const res = await orchestrateDAG(goal, "usr_guest_demo", maxBudget);
@@ -60,39 +63,42 @@ export default function OrchestratorPage() {
     <div className="min-h-screen bg-white text-black">
       <NeuralNavbar />
 
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-24 pb-20">
+      <main className="max-w-[1600px] mx-auto px-6 lg:px-12 pt-24 pb-20 border-x border-black/10">
 
         {/* ── Header Bar ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E2E8F0] pb-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-black/10 pb-6 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="badge-mono bg-black text-white">AUTONOMOUS_DAG_v2</span>
-              <span className="font-mono text-xs text-[#64748B]">// Intent-Based Task Broker</span>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="badge-mono bg-black text-white font-bold">AUTONOMOUS_DAG_v2</span>
+              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">// Supervisor Intent Broker</span>
             </div>
-            <h1 className="font-sans font-black text-3xl sm:text-4xl text-black tracking-tight">
-              Meta-Agent Orchestrator
+            <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
+              meta-agent orchestrator.
             </h1>
+            <p className="text-xs text-black/60 mt-1 font-mono uppercase max-w-xl">
+              Natural language intent decomposition into specialist DAG sub-tasks via Groq openai/gpt-oss-120b.
+            </p>
           </div>
 
           {/* Budget Selector Mode */}
-          <div className="flex items-center gap-2 border border-[#E2E8F0] bg-[#F8FAFC] p-1 rounded-lg self-start sm:self-auto">
+          <div className="flex items-center gap-2 border border-black/10 bg-black/[0.02] p-1 self-start sm:self-auto">
             <button
               onClick={() => setBudgetMode("high")}
-              className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              className={`px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
                 budgetMode === "high"
-                  ? "bg-black text-white shadow-xs"
-                  : "text-[#64748B] hover:text-black"
+                  ? "bg-black text-white"
+                  : "text-black/50 hover:text-black"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <Sparkles className="w-3.5 h-3.5 text-[#FF4500]" />
               <span>High-Performance (50+ CR)</span>
             </button>
             <button
               onClick={() => setBudgetMode("low")}
-              className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              className={`px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
                 budgetMode === "low"
-                  ? "bg-black text-white shadow-xs"
-                  : "text-[#64748B] hover:text-black"
+                  ? "bg-black text-white"
+                  : "text-black/50 hover:text-black"
               }`}
             >
               <DollarSign className="w-3.5 h-3.5 text-[#10B981]" />
@@ -102,27 +108,27 @@ export default function OrchestratorPage() {
         </div>
 
         {/* ── Input Box & Preset Chips ── */}
-        <div className="border border-[#E2E8F0] bg-white rounded-lg p-5 mb-8 shadow-xs">
-          <label className="block text-xs font-mono uppercase text-[#64748B] font-semibold mb-2">
+        <div className="border border-black/10 bg-white p-6 mb-8">
+          <label className="block text-[10px] font-mono uppercase text-black/50 font-bold tracking-widest mb-3">
             NATURAL_LANGUAGE_INTENT_PROMPT
           </label>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
+
+          <div className="flex flex-col sm:flex-row gap-4">
             <textarea
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               rows={2}
-              placeholder="Type any complex goal (e.g. Audit balance sheet variances and compile python compliance logic)..."
-              className="flex-1 border border-[#E2E8F0] bg-[#F8FAFC] rounded-lg p-3 text-sm font-sans text-black outline-none focus:border-black transition-colors resize-none"
+              placeholder="ENTER YOUR COMPLEX GOAL (e.g. Audit balance sheet variances and compile python compliance logic)..."
+              className="flex-1 border border-black/15 bg-black/[0.015] p-3.5 text-xs font-mono text-black uppercase tracking-wider outline-none focus:border-black transition-colors resize-none"
             />
             <button
               onClick={handleRun}
               disabled={loading}
-              className="btn-solid-black px-6 gap-2 self-stretch sm:self-auto shrink-0"
+              className="btn-solid-black px-8 py-3.5 self-stretch sm:self-auto shrink-0 disabled:opacity-40"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Synthesizing DAG...</span>
                 </>
               ) : (
@@ -135,13 +141,13 @@ export default function OrchestratorPage() {
           </div>
 
           {/* Quick Preset Chips */}
-          <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1">
-            <span className="text-[0.68rem] font-mono text-[#94A3B8] uppercase whitespace-nowrap">Presets:</span>
+          <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-1">
+            <span className="text-[10px] font-mono text-black/40 uppercase tracking-widest whitespace-nowrap">PRESETS:</span>
             {PRESET_GOALS.map((p) => (
               <button
                 key={p.tag}
                 onClick={() => setGoal(p.prompt)}
-                className="px-2.5 py-1 text-[0.68rem] font-mono rounded bg-[#F1F5F9] text-[#64748B] hover:text-black hover:bg-[#E2E8F0] transition-colors whitespace-nowrap"
+                className="px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider bg-black/[0.02] text-black/60 hover:text-black hover:bg-black/5 border border-black/10 transition-colors whitespace-nowrap"
               >
                 {p.tag}
               </button>
@@ -151,85 +157,105 @@ export default function OrchestratorPage() {
 
         {/* ── Execution Results & Interactive DAG Pipeline ── */}
         {result && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Meta-Agent Execution Telemetry Banner */}
-            <div className="border border-[#E2E8F0] bg-[#F8FAFC] p-4 rounded-lg flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+            <div className="border border-black/10 bg-black/[0.02] p-5 flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
               <div className="flex items-center gap-4 flex-wrap">
-                <span className="flex items-center gap-1.5 text-black font-semibold">
+                <span className="flex items-center gap-1.5 text-black font-bold">
                   <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-                  STRATEGY: <span className="text-[#0284C7]">{result.budget_strategy}</span>
+                  STRATEGY: <span className="text-[#FF4500]">{result.budget_strategy}</span>
                 </span>
-                <span className="text-[#CBD5E1]">|</span>
+                <span className="text-black/20">|</span>
                 <span>EXECUTION_TIME: <strong className="text-black">{result.execution_time_ms}ms</strong></span>
-                <span className="text-[#CBD5E1]">|</span>
+                <span className="text-black/20">|</span>
                 <span>ESTIMATED_COST: <strong className="text-black">{result.estimated_cost_credits} CR</strong></span>
               </div>
-              <span className="badge-mono bg-white text-black font-bold">
+              <span className="badge-mono bg-black text-white font-bold">
                 TOTAL_TOKENS: {result.total_tokens}
               </span>
             </div>
 
             {/* DAG Graph Pipeline Nodes */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
-              {result.dag_plan.map((step: any, idx: number) => {
-                const isSelected = selectedStep === idx;
-                return (
-                  <div
-                    key={step.step_index}
-                    onClick={() => setSelectedStep(idx)}
-                    className={`cursor-pointer border rounded-lg p-5 transition-all relative ${
-                      isSelected
-                        ? "border-black bg-white shadow-md ring-1 ring-black"
-                        : "border-[#E2E8F0] bg-white hover:border-[#CBD5E1]"
-                    }`}
-                  >
-                    {/* Node Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono text-[0.68rem] font-bold px-2 py-0.5 rounded bg-[#F1F5F9] text-black">
-                        STEP_0{step.step_index}
-                      </span>
-                      <span className="font-mono text-[0.68rem] text-[#10B981] font-semibold flex items-center gap-1">
-                        <Zap className="w-3 h-3 text-[#0284C7]" />
-                        {step.latency_ms}ms
-                      </span>
-                    </div>
+            <div>
+              <div className="text-[10px] font-mono font-bold text-black uppercase tracking-widest mb-3">
+                // SEQUENTIAL_DAG_SUBTASKS ({result.dag_plan.length} NODES)
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {result.dag_plan.map((step: any, idx: number) => {
+                  const isSelected = selectedStep === idx;
+                  return (
+                    <div
+                      key={step.step_index}
+                      onClick={() => setSelectedStep(idx)}
+                      className={`cursor-pointer border p-6 transition-all relative ${
+                        isSelected
+                          ? "border-[#FF4500] bg-white ring-1 ring-[#FF4500]"
+                          : "border-black/10 bg-white hover:border-black/30"
+                      }`}
+                    >
+                      {/* Node Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 bg-black text-white uppercase">
+                          STEP_0{step.step_index}
+                        </span>
+                        <span className="font-mono text-[10px] text-[#10B981] font-bold flex items-center gap-1">
+                          <Zap className="w-3 h-3 text-[#FF4500]" />
+                          {step.latency_ms}ms
+                        </span>
+                      </div>
 
-                    <h3 className="font-sans font-bold text-sm text-black mb-1.5">
-                      {step.title}
-                    </h3>
-                    <p className="text-[#64748B] text-xs font-sans leading-relaxed mb-4">
-                      {step.description}
-                    </p>
+                      <h3 className="font-sans font-bold text-base text-black mb-2">
+                        {step.title}
+                      </h3>
+                      <p className="text-black/60 text-xs font-sans leading-relaxed mb-4">
+                        {step.description}
+                      </p>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-[#F1F5F9] text-xs font-mono">
-                      <span className="text-[#0284C7] font-semibold truncate max-w-[160px]">
-                        {step.assigned_model_name}
-                      </span>
-                      <span className="text-[#64748B]">{step.cost_credits} CR</span>
+                      <div className="flex items-center justify-between pt-3 border-t border-black/10 text-xs font-mono">
+                        <span className="text-[#FF4500] font-bold truncate max-w-[180px]">
+                          {step.assigned_model_name}
+                        </span>
+                        <span className="text-black/50">{step.cost_credits} CR</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
             {/* Trace Output Drawer for Selected Step */}
             {result.dag_plan[selectedStep] && (
-              <div className="border border-[#E2E8F0] bg-white rounded-lg p-6 shadow-xs">
-                <div className="flex items-center justify-between mb-3 border-b border-[#E2E8F0] pb-3">
+              <div className="border border-black/10 bg-white p-6">
+                <div className="flex items-center justify-between mb-4 border-b border-black/10 pb-3">
                   <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-black" />
-                    <span className="font-mono text-xs font-bold text-black">
-                      STEP_OUTPUT // {result.dag_plan[selectedStep].assigned_model_name}
+                    <Terminal className="w-4 h-4 text-[#FF4500]" />
+                    <span className="font-mono text-xs font-bold text-black uppercase tracking-wider">
+                      STEP_OUTPUT // {result.dag_plan[selectedStep].assigned_model_name} ({result.dag_plan[selectedStep].title})
                     </span>
                   </div>
-                  <span className="font-mono text-xs text-[#10B981]">
+                  <span className="font-mono text-[10px] text-[#10B981] font-bold uppercase">
                     STATUS: {result.dag_plan[selectedStep].status}
                   </span>
                 </div>
 
-                <pre className="bg-[#09090B] text-slate-100 p-4 rounded-lg text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                <pre className="bg-black text-white p-5 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap">
                   {result.dag_plan[selectedStep].output || "No output telemetry generated."}
                 </pre>
+              </div>
+            )}
+
+            {/* Master Synthesis Deliverable */}
+            {result.final_output && (
+              <div className="border border-black/10 bg-white p-8">
+                <div className="flex items-center gap-2 mb-4 border-b border-black/10 pb-3">
+                  <FileCheck2 className="w-4 h-4 text-[#10B981]" />
+                  <span className="font-mono text-xs font-bold text-black uppercase tracking-widest">
+                    MASTER_SYNTHESIZED_DELIVERABLE // GROQ SUPERVISOR
+                  </span>
+                </div>
+                <div className="text-xs font-mono leading-relaxed text-black/80 whitespace-pre-wrap bg-black/[0.015] p-5 border border-black/5">
+                  {result.final_output}
+                </div>
               </div>
             )}
           </div>

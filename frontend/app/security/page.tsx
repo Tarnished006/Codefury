@@ -20,11 +20,11 @@ const PROBE_LABELS: Record<string, string> = {
 };
 
 const AXIS_COLORS: Record<string, string> = {
-  prompt_injection:     "#EF4444",
-  jailbreak_resistance: "#F59E0B",
-  task_hijacking:       "#8B5CF6",
-  data_leakage:         "#0284C7",
-  context_manipulation: "#10B981",
+  prompt_injection:     "#FF4500",
+  jailbreak_resistance: "#000000",
+  task_hijacking:       "#64748B",
+  data_leakage:         "#10B981",
+  context_manipulation: "#0F172A",
 };
 
 export default function SecurityPage() {
@@ -40,7 +40,6 @@ export default function SecurityPage() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load all models on mount
   useEffect(() => {
     fetchModels().then((data: any[]) => {
       setModels(data || []);
@@ -48,7 +47,6 @@ export default function SecurityPage() {
     }).catch(console.error);
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -61,7 +59,7 @@ export default function SecurityPage() {
 
   const filteredModels = models.filter(m => {
     const domainMatch = domainFilter === "ALL DOMAINS" ||
-      m.domain.replace("_", " ").toUpperCase() === domainFilter;
+      (m.domain || "").replace("_", " ").toUpperCase() === domainFilter;
     const searchMatch = !searchQuery ||
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.repo_id.toLowerCase().includes(searchQuery.toLowerCase());
@@ -74,15 +72,14 @@ export default function SecurityPage() {
     setAudit(null);
     setProbeProgress([]);
 
-    // Animate probe dispatch messages while the real API call runs
     const probeNames = [
       "Dispatching Prompt Injection probe...",
       "Dispatching Jailbreak Resistance probe...",
       "Dispatching Task Hijacking probe...",
       "Dispatching Data Leakage probe...",
       "Dispatching Context Manipulation probe...",
-      "Forwarding responses to Groq LLM-as-a-Judge...",
-      "Parsing safety scores + reasoning...",
+      "Forwarding responses to Groq LLM-as-a-Judge (openai/gpt-oss-120b)...",
+      "Parsing multi-axis OWASP scores...",
     ];
     let i = 0;
     const ticker = setInterval(() => {
@@ -92,7 +89,7 @@ export default function SecurityPage() {
       } else {
         clearInterval(ticker);
       }
-    }, 900);
+    }, 850);
 
     try {
       const data = await fetchModelAudit(selectedModel.id);
@@ -101,7 +98,7 @@ export default function SecurityPage() {
       setProbeProgress([]);
     } catch (e) {
       clearInterval(ticker);
-      setProbeProgress(["Error connecting to audit engine. Check backend is running."]);
+      setProbeProgress(["Error connecting to security engine."]);
     } finally {
       setLoading(false);
     }
@@ -124,43 +121,43 @@ export default function SecurityPage() {
   };
 
   const overallScore = audit?.overall_score ?? 0;
-  const overallColor = overallScore >= 90 ? "#10B981" : overallScore >= 70 ? "#F59E0B" : "#EF4444";
+  const overallColor = overallScore >= 80 ? "#10B981" : overallScore >= 60 ? "#FF4500" : "#EF4444";
 
   return (
     <div className="min-h-screen bg-white text-black">
       <NeuralNavbar />
 
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-24 pb-20">
+      <main className="max-w-[1600px] mx-auto px-6 lg:px-12 pt-24 pb-20 border-x border-black/10">
 
         {/* ── Page Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E2E8F0] pb-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-black/10 pb-6 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="badge-mono bg-[#10B981] text-white font-bold">OWASP_LLM_TOP_10</span>
-              <span className="font-mono text-xs text-[#64748B]">// LLM-as-a-Judge Red-Team Auditor via Groq</span>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="badge-mono bg-black text-white font-bold">OWASP_LLM_TOP_10</span>
+              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">// LLM-as-a-Judge Penetration Testing</span>
             </div>
-            <h1 className="font-sans font-black text-3xl sm:text-4xl text-black tracking-tight">
-              AI Security Radar
+            <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
+              security radar.
             </h1>
-            <p className="text-sm text-[#64748B] mt-1 font-sans">
-              Select any model → Groq fires 5 adversarial probes in real-time → LLM-as-a-Judge scores containment.
+            <p className="text-xs text-black/60 mt-1 font-mono uppercase max-w-xl">
+              Real-time adversarial probe evaluation via Groq openai/gpt-oss-120b judge across 5 boundary conditions.
             </p>
           </div>
           {audit && (
             <div
-              className="font-mono text-sm font-bold px-4 py-2 rounded-lg border"
-              style={{ color: overallColor, borderColor: overallColor, background: `${overallColor}15` }}
+              className="font-mono text-xs font-bold px-4 py-2 border uppercase tracking-wider"
+              style={{ color: overallColor, borderColor: overallColor, background: `${overallColor}10` }}
             >
-              {overallScore}% OVERALL SAFE
+              {overallScore}% OVERALL CONTAINMENT
             </div>
           )}
         </div>
 
         {/* ── Model Selector Panel ── */}
-        <div className="border border-[#E2E8F0] bg-white rounded-lg p-5 mb-8 shadow-xs">
+        <div className="border border-black/10 bg-white p-6 mb-8">
           <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-            <span className="font-mono text-xs font-bold text-black uppercase shrink-0">
-              TARGET MODEL
+            <span className="font-mono text-[10px] font-bold text-black/50 uppercase tracking-widest shrink-0">
+              TARGET_MODEL:
             </span>
 
             {/* Domain filter pills */}
@@ -169,10 +166,10 @@ export default function SecurityPage() {
                 <button
                   key={d}
                   onClick={() => { setDomainFilter(d); setDropdownOpen(true); }}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md whitespace-nowrap transition-all ${
+                  className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
                     domainFilter === d
                       ? "bg-black text-white"
-                      : "bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0] hover:text-black"
+                      : "bg-black/[0.02] text-black/50 border border-black/10 hover:text-black"
                   }`}
                 >
                   {d}
@@ -181,66 +178,64 @@ export default function SecurityPage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
             {/* Searchable model dropdown */}
             <div className="relative flex-1" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-full flex items-center justify-between gap-3 border border-[#E2E8F0] bg-[#F8FAFC] rounded-lg px-4 py-2.5 text-left"
+                className="w-full flex items-center justify-between gap-3 border border-black/15 bg-black/[0.015] px-4 py-3 text-left"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Shield className="w-4 h-4 text-[#10B981] shrink-0" />
+                <div className="flex items-center gap-3 min-w-0">
+                  <Shield className="w-4 h-4 text-[#FF4500] shrink-0" />
                   {selectedModel ? (
                     <div className="min-w-0">
-                      <div className="text-sm font-sans font-bold text-black truncate">{selectedModel.name}</div>
-                      <div className="text-xs font-mono text-[#64748B] truncate">{selectedModel.repo_id}</div>
+                      <div className="text-xs font-sans font-bold text-black truncate">{selectedModel.name}</div>
+                      <div className="text-[10px] font-mono text-black/50 truncate">{selectedModel.repo_id}</div>
                     </div>
                   ) : (
-                    <span className="text-sm text-[#64748B]">Select a model to audit...</span>
+                    <span className="text-xs font-mono text-black/40">Select a model to audit...</span>
                   )}
                 </div>
-                <ChevronDown className={`w-4 h-4 text-[#64748B] transition-transform shrink-0 ${dropdownOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 text-black/40 transition-transform shrink-0 ${dropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
               {dropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-[#E2E8F0] rounded-lg shadow-xl overflow-hidden">
-                  {/* Search input */}
-                  <div className="p-2 border-b border-[#F1F5F9]">
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-black/15 shadow-2xl overflow-hidden">
+                  <div className="p-2 border-b border-black/10">
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-2.5 top-2" />
+                      <Search className="w-3.5 h-3.5 text-black/40 absolute left-2.5 top-2.5" />
                       <input
                         autoFocus
                         type="text"
-                        placeholder="Search by name or repo..."
+                        placeholder="SEARCH MODEL OR REPO..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 text-xs font-mono border border-[#E2E8F0] rounded bg-[#F8FAFC] outline-none focus:border-black"
+                        className="w-full pl-8 pr-3 py-1.5 text-xs font-mono border border-black/15 bg-black/[0.015] uppercase tracking-wider outline-none focus:border-black"
                       />
                     </div>
                   </div>
 
-                  {/* Model list */}
-                  <div className="max-h-64 overflow-y-auto divide-y divide-[#F1F5F9]">
+                  <div className="max-h-60 overflow-y-auto divide-y divide-black/5">
                     {filteredModels.length === 0 ? (
-                      <div className="p-4 text-xs font-mono text-[#64748B] text-center">No models match filter</div>
+                      <div className="p-4 text-xs font-mono text-black/40 text-center">No models match filter</div>
                     ) : filteredModels.map(m => (
                       <button
                         key={m.id}
                         onClick={() => { setSelectedModel(m); setDropdownOpen(false); setAudit(null); }}
-                        className={`w-full text-left px-4 py-2.5 hover:bg-[#F8FAFC] transition-colors flex items-center gap-3 ${
-                          selectedModel?.id === m.id ? "bg-[#F0FDF4]" : ""
+                        className={`w-full text-left px-4 py-3 hover:bg-black/[0.02] transition-colors flex items-center gap-3 ${
+                          selectedModel?.id === m.id ? "bg-black/[0.04]" : ""
                         }`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-sans font-bold text-black">{m.name}</div>
-                          <div className="text-[0.65rem] font-mono text-[#64748B] truncate">{m.repo_id}</div>
+                          <div className="text-[10px] font-mono text-black/50 truncate">{m.repo_id}</div>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          <span className="text-[0.6rem] font-mono px-1.5 py-0.5 bg-[#F1F5F9] rounded text-[#475569] uppercase">
+                          <span className="text-[9px] font-mono px-2 py-0.5 bg-black/[0.03] border border-black/10 uppercase">
                             {m.domain}
                           </span>
                           {selectedModel?.id === m.id && (
-                            <CheckCircle2 className="w-3 h-3 text-[#10B981]" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#FF4500]" />
                           )}
                         </div>
                       </button>
@@ -254,59 +249,58 @@ export default function SecurityPage() {
             <button
               onClick={runAudit}
               disabled={!selectedModel || loading}
-              className="btn-solid-black gap-2 px-6 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-solid-black px-8 py-3.5 shrink-0 disabled:opacity-40"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Auditing...</span>
                 </>
               ) : (
                 <>
-                  <Shield className="w-4 h-4" />
+                  <Shield className="w-3.5 h-3.5" />
                   <span>Run Live Audit</span>
                 </>
               )}
             </button>
           </div>
 
-          {/* Selected model metadata strip */}
           {selectedModel && (
-            <div className="mt-4 pt-4 border-t border-[#F1F5F9] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            <div className="mt-5 pt-4 border-t border-black/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
               <div>
-                <span className="text-[0.62rem] text-[#64748B] block">DOMAIN</span>
-                <strong className="text-black">{selectedModel.domain}</strong>
+                <span className="text-[9px] text-black/40 uppercase block">DOMAIN</span>
+                <strong className="text-black uppercase">{selectedModel.domain}</strong>
               </div>
               <div>
-                <span className="text-[0.62rem] text-[#64748B] block">TASK</span>
+                <span className="text-[9px] text-black/40 uppercase block">TASK</span>
                 <strong className="text-black">{selectedModel.task_tag}</strong>
               </div>
               <div>
-                <span className="text-[0.62rem] text-[#64748B] block">CONTEXT</span>
-                <strong className="text-black">{selectedModel.context_length?.toLocaleString()} tok</strong>
+                <span className="text-[9px] text-black/40 uppercase block">CONTEXT</span>
+                <strong className="text-black">{selectedModel.context_length?.toLocaleString() || "8,192"} tok</strong>
               </div>
               <div>
-                <span className="text-[0.62rem] text-[#64748B] block">HF REPO</span>
+                <span className="text-[9px] text-black/40 uppercase block">REPO</span>
                 <strong className="text-black truncate block">{selectedModel.repo_id}</strong>
               </div>
             </div>
           )}
         </div>
 
-        {/* ── Probe Progress Log (while loading) ── */}
+        {/* ── Probe Progress Log ── */}
         {loading && probeProgress.length > 0 && (
-          <div className="border border-[#E2E8F0] bg-[#0F172A] rounded-lg p-5 mb-8 font-mono text-xs">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-              <span className="text-[#10B981] font-bold">GROQ_RED_TEAM_ENGINE // LIVE</span>
+          <div className="border border-black/10 bg-black text-white p-6 mb-8 font-mono text-xs">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-2 h-2 rounded-full bg-[#FF4500] animate-pulse" />
+              <span className="text-[#FF4500] font-bold tracking-widest uppercase">GROQ_RED_TEAM_ENGINE // FIRING PROBES</span>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {probeProgress.map((msg, i) => (
-                <div key={i} className="flex items-center gap-2 text-[#94A3B8]">
-                  <span className="text-[#10B981]">›</span>
+                <div key={i} className="flex items-center gap-2 text-white/70">
+                  <span className="text-[#FF4500]">›</span>
                   <span>{msg}</span>
                   {i === probeProgress.length - 1 && (
-                    <Loader2 className="w-3 h-3 animate-spin text-[#10B981]" />
+                    <Loader2 className="w-3 h-3 animate-spin text-[#FF4500]" />
                   )}
                 </div>
               ))}
@@ -314,51 +308,48 @@ export default function SecurityPage() {
           </div>
         )}
 
-        {/* ── Empty state ── */}
+        {/* ── Empty State ── */}
         {!loading && !audit && (
-          <div className="flex flex-col items-center justify-center p-20 border border-dashed border-[#E2E8F0] rounded-lg bg-[#FAFAFA] text-center">
-            <Shield className="w-10 h-10 text-[#CBD5E1] mb-3" />
-            <p className="font-mono text-sm text-[#64748B] font-bold">SELECT A MODEL + CLICK "RUN LIVE AUDIT"</p>
-            <p className="text-xs font-mono text-[#94A3B8] mt-1">
-              Groq (`openai/gpt-oss-120b`) will fire 5 adversarial probes and return real safety scores.
+          <div className="flex flex-col items-center justify-center p-20 border border-dashed border-black/15 bg-black/[0.01] text-center">
+            <Shield className="w-10 h-10 text-black/20 mb-4" />
+            <p className="font-mono text-xs text-black/60 font-bold uppercase tracking-widest">SELECT A MODEL + CLICK "RUN LIVE AUDIT"</p>
+            <p className="text-[10px] font-mono text-black/40 uppercase tracking-wider mt-1">
+              5 adversarial attack vectors will be evaluated in real time by Groq openai/gpt-oss-120b.
             </p>
           </div>
         )}
 
         {/* ── Audit Results ── */}
         {audit && !loading && (
-          <div className="space-y-6">
-
-            {/* Evaluated-by badge */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="flex items-center gap-1.5 text-xs font-mono text-[#64748B]">
-                <Cpu className="w-3.5 h-3.5" />
-                Evaluated by: <strong className="text-black">{audit.evaluated_by || "Groq LPU"}</strong>
+          <div className="space-y-8">
+            <div className="flex items-center gap-4 flex-wrap border-b border-black/10 pb-4">
+              <span className="flex items-center gap-1.5 text-xs font-mono text-black/60">
+                <Cpu className="w-3.5 h-3.5 text-[#FF4500]" />
+                Evaluator: <strong className="text-black">{audit.evaluated_by || "Groq openai/gpt-oss-120b"}</strong>
               </span>
-              <span className="text-[#CBD5E1]">|</span>
-              <span className="text-xs font-mono text-[#64748B]">
-                Repo: <strong className="text-black">{audit.repo_id || selectedModel?.repo_id}</strong>
+              <span className="text-black/20">|</span>
+              <span className="text-xs font-mono text-black/60">
+                Target Repo: <strong className="text-black">{audit.repo_id || selectedModel?.repo_id}</strong>
               </span>
-              <button onClick={runAudit} className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-[#64748B] hover:text-black transition-colors">
-                <RefreshCw className="w-3.5 h-3.5" />
-                Re-run Audit
+              <button onClick={runAudit} className="ml-auto btn-outline py-1.5 px-3 text-[10px]">
+                <RefreshCw className="w-3 h-3" />
+                Re-Run Audit
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-8 items-start">
 
-              {/* ── LEFT: SVG Radar Chart ── */}
-              <div className="border border-[#E2E8F0] bg-white rounded-lg p-6 flex flex-col items-center shadow-xs">
-                <div className="flex items-center justify-between w-full mb-4">
-                  <span className="font-mono text-xs font-bold text-black uppercase">MULTI_AXIS_SECURITY_RADAR</span>
+              {/* ── SVG Radar Chart ── */}
+              <div className="border border-black/10 bg-white p-8 flex flex-col items-center">
+                <div className="flex items-center justify-between w-full mb-6">
+                  <span className="font-mono text-[10px] font-bold text-black uppercase tracking-widest">MULTI_AXIS_SECURITY_RADAR</span>
                   <span className="font-mono text-xs font-bold" style={{ color: overallColor }}>
-                    {overallScore}% SAFE
+                    {overallScore}% CONTAINMENT
                   </span>
                 </div>
 
-                <div className="relative w-[260px] h-[260px] flex items-center justify-center">
+                <div className="relative w-[260px] h-[260px] flex items-center justify-center my-4">
                   <svg width="260" height="260" viewBox="0 0 260 260" className="overflow-visible">
-                    {/* Grid rings */}
                     {[0.25, 0.5, 0.75, 1].map((scale) => (
                       <polygon
                         key={scale}
@@ -373,7 +364,6 @@ export default function SecurityPage() {
                         strokeDasharray={scale < 1 ? "3 3" : undefined}
                       />
                     ))}
-                    {/* Axis lines */}
                     {["prompt_injection","jailbreak_resistance","task_hijacking","data_leakage","context_manipulation"].map((_, i) => {
                       const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
                       return (
@@ -385,123 +375,99 @@ export default function SecurityPage() {
                         />
                       );
                     })}
-                    {/* Score polygon */}
                     <polygon
                       points={getRadarPoints()}
-                      fill={`${overallColor}25`}
-                      stroke={overallColor}
+                      fill="rgba(255, 69, 0, 0.15)"
+                      stroke="#FF4500"
                       strokeWidth="2"
                     />
-                    {/* Score dots */}
                     {getRadarPoints().split(" ").map((pt, i) => {
                       const [x, y] = pt.split(",");
-                      const axes = ["prompt_injection","jailbreak_resistance","task_hijacking","data_leakage","context_manipulation"];
                       return (
-                        <circle key={i} cx={x} cy={y} r="5"
-                          fill={AXIS_COLORS[axes[i]]} stroke="#fff" strokeWidth="2"
+                        <circle key={i} cx={x} cy={y} r="4"
+                          fill="#FF4500" stroke="#fff" strokeWidth="2"
                         />
                       );
                     })}
                   </svg>
-
-                  {/* Axis labels */}
-                  {[
-                    { axis: "prompt_injection",     pos: "absolute top-0 left-1/2 -translate-x-1/2 text-center" },
-                    { axis: "jailbreak_resistance",  pos: "absolute top-[22%] right-0 text-right" },
-                    { axis: "task_hijacking",        pos: "absolute bottom-[8%] right-2 text-right" },
-                    { axis: "data_leakage",          pos: "absolute bottom-[8%] left-2 text-left" },
-                    { axis: "context_manipulation",  pos: "absolute top-[22%] left-0 text-left" },
-                  ].map(({ axis, pos }) => (
-                    <div key={axis} className={`${pos} font-mono text-[0.6rem] leading-tight`}>
-                      <div className="text-[#475569]">{PROBE_LABELS[axis]}</div>
-                      <div className="font-bold" style={{ color: AXIS_COLORS[axis] }}>
-                        {getScore(axis)}%
-                      </div>
-                    </div>
-                  ))}
                 </div>
 
-                {/* Score legend */}
-                <div className="w-full mt-4 pt-4 border-t border-[#E2E8F0] grid grid-cols-5 gap-1">
+                {/* Score Breakdown Bar */}
+                <div className="w-full mt-6 pt-6 border-t border-black/10 grid grid-cols-5 gap-2">
                   {Object.entries(PROBE_LABELS).map(([axis, label]) => (
                     <div key={axis} className="flex flex-col items-center gap-1">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: AXIS_COLORS[axis] }} />
-                      <div className="font-mono text-[0.55rem] text-[#64748B] text-center leading-tight">
+                      <div className="font-mono text-[9px] text-black/50 text-center uppercase tracking-wider">
                         {label.split(" ")[0]}
                       </div>
-                      <div className="font-mono text-[0.62rem] font-bold text-black">{getScore(axis)}%</div>
+                      <div className="font-mono text-xs font-bold text-black">{getScore(axis)}%</div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* ── RIGHT: Results ── */}
-              <div className="space-y-5">
+              {/* ── Probe Outputs & Reasoning ── */}
+              <div className="space-y-6">
 
-                {/* Groq Reasoning */}
+                {/* Groq Reasoning Narrative */}
                 {audit.reasoning && (
-                  <div className="border border-[#E2E8F0] bg-[#F8FAFC] rounded-lg p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Cpu className="w-4 h-4 text-[#8B5CF6]" />
-                      <span className="font-mono text-xs font-bold text-black uppercase">Groq Evaluator Reasoning</span>
+                  <div className="border border-black/10 bg-black/[0.02] p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Cpu className="w-4 h-4 text-[#FF4500]" />
+                      <span className="font-mono text-[10px] font-bold text-black uppercase tracking-widest">Groq Evaluator Reasoning</span>
                     </div>
-                    <p className="text-sm font-sans text-[#475569] leading-relaxed italic">
+                    <p className="text-xs font-mono text-black/70 leading-relaxed uppercase">
                       "{audit.reasoning}"
                     </p>
                   </div>
                 )}
 
-                {/* Probe-by-probe results */}
-                <div className="border border-[#E2E8F0] bg-white rounded-lg overflow-hidden shadow-xs">
-                  <div className="px-5 py-3.5 bg-[#F8FAFC] border-b border-[#E2E8F0] text-xs font-mono font-bold text-black uppercase">
-                    ADVERSARIAL_PROBE_RESULTS // 5 LIVE ATTACKS
+                {/* Probe Cards */}
+                <div className="border border-black/10 bg-white overflow-hidden">
+                  <div className="px-6 py-4 bg-black/[0.02] border-b border-black/10 text-[10px] font-mono font-bold text-black uppercase tracking-widest">
+                    ADVERSARIAL_PROBE_EVALUATIONS // 5 ATTACK VECTORS
                   </div>
-                  <div className="divide-y divide-[#E2E8F0]">
+                  <div className="divide-y divide-black/10">
                     {(audit.probe_outputs || audit.vulnerabilities || []).map((po: any, idx: number) => {
                       const axis = po.axis || "";
                       const score = getScore(axis);
-                      const passed = score >= 80;
+                      const passed = score >= 70;
                       return (
-                        <div key={idx} className="p-4">
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex items-center gap-2">
+                        <div key={idx} className="p-6">
+                          <div className="flex items-start justify-between gap-4 mb-3">
+                            <div className="flex items-center gap-3">
                               {passed
                                 ? <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
-                                : <XCircle className="w-4 h-4 text-[#EF4444] shrink-0" />
+                                : <XCircle className="w-4 h-4 text-[#FF4500] shrink-0" />
                               }
                               <div>
                                 <div className="text-sm font-sans font-bold text-black">
                                   {po.test_name || po.test}
                                 </div>
-                                <div className="text-[0.65rem] font-mono text-[#64748B] uppercase mt-0.5">
+                                <div className="text-[10px] font-mono text-black/40 uppercase mt-0.5 tracking-wider">
                                   {PROBE_LABELS[axis] || axis}
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span
-                                className="font-mono text-xs font-bold px-2 py-0.5 rounded"
-                                style={{
-                                  color: passed ? "#10B981" : "#EF4444",
-                                  background: passed ? "#F0FDF4" : "#FEF2F2",
-                                  border: `1px solid ${passed ? "#DCFCE7" : "#FECACA"}`
-                                }}
-                              >
-                                {score}% {passed ? "SAFE" : "RISK"}
-                              </span>
-                            </div>
+                            <span
+                              className="font-mono text-[10px] font-bold px-2.5 py-1 uppercase"
+                              style={{
+                                color: passed ? "#10B981" : "#FF4500",
+                                background: passed ? "#F0FDF4" : "#FFF7ED",
+                                border: `1px solid ${passed ? "#DCFCE7" : "#FFEDD5"}`
+                              }}
+                            >
+                              {score}% {passed ? "MITIGATED" : "VULNERABLE"}
+                            </span>
                           </div>
-                          {/* Probe text */}
                           {po.probe && (
-                            <div className="ml-6 mb-1.5 p-2.5 bg-[#FFF7ED] border border-[#FED7AA] rounded text-xs font-mono text-[#92400E]">
-                              <span className="font-bold">PROBE: </span>{po.probe}
+                            <div className="ml-7 mb-2 p-3 bg-black/[0.02] border border-black/10 text-xs font-mono text-black/80">
+                              <span className="font-bold text-[#FF4500]">ATTACK PROBE: </span>{po.probe}
                             </div>
                           )}
-                          {/* Model response snippet */}
                           {po.response && (
-                            <div className="ml-6 p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded text-xs font-mono text-[#475569]">
-                              <span className="font-bold text-black">RESPONSE: </span>
-                              {po.response.slice(0, 220)}{po.response.length > 220 ? "..." : ""}
+                            <div className="ml-7 p-3 bg-white border border-black/10 text-xs font-mono text-black/60">
+                              <span className="font-bold text-black">MODEL RESPONSE: </span>
+                              {po.response.slice(0, 240)}{po.response.length > 240 ? "..." : ""}
                             </div>
                           )}
                         </div>
@@ -509,19 +475,6 @@ export default function SecurityPage() {
                     })}
                   </div>
                 </div>
-
-                {/* Executive summary */}
-                {audit.audit_summary && (
-                  <div className="border border-[#E2E8F0] bg-white rounded-lg p-5 shadow-xs">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileCheck2 className="w-4 h-4 text-[#0284C7]" />
-                      <span className="font-mono text-xs font-bold text-black uppercase">Executive Summary</span>
-                    </div>
-                    <p className="text-sm font-sans text-[#475569] leading-relaxed">
-                      {audit.audit_summary}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </div>

@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Zap,
   Lock,
   Mail,
   User as UserIcon,
-  AlertCircle
+  AlertCircle,
+  ArrowRight
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
@@ -55,24 +57,21 @@ export default function LoginPage() {
     <div className="min-h-screen bg-white text-black flex flex-col justify-between">
       <NeuralNavbar />
 
-      <main className="max-w-md w-full mx-auto px-4 pt-28 pb-16">
-        <div className="border border-[#E2E8F0] bg-white rounded-xl p-8 shadow-sm">
+      <main className="max-w-md w-full mx-auto px-6 pt-28 pb-16">
+        <div className="border border-black/10 bg-white p-8">
 
           {/* ── Brand Title ── */}
-          <div className="text-center mb-6">
-            <div className="w-10 h-10 rounded-lg bg-black text-white flex items-center justify-center mx-auto mb-3">
-              <Zap className="w-5 h-5 text-cyan-400" />
-            </div>
-            <h1 className="font-sans font-black text-2xl text-black tracking-tight">
-              {mode === "login" ? "Sign In to AgentHub" : "Create Developer Account"}
+          <div className="text-center mb-8">
+            <h1 className="font-sans font-extrabold text-2xl text-black tracking-tight mb-1">
+              {mode === "login" ? "Sign In to AgentNet" : "Create Developer Account"}
             </h1>
-            <p className="text-xs font-mono text-[#64748B] mt-1">
-              Autonomous Model Network & Economic Mesh
+            <p className="text-[10px] font-mono text-black/50 uppercase tracking-widest mt-1">
+              Autonomous Intelligence & Economic Mesh
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-sans rounded-md flex items-center gap-2">
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-mono flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -82,53 +81,53 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "register" && (
               <div>
-                <label className="block text-xs font-mono uppercase text-[#64748B] mb-1">
+                <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1.5">
                   DEVELOPER_HANDLE
                 </label>
                 <div className="relative">
-                  <UserIcon className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
+                  <UserIcon className="w-4 h-4 text-black/30 absolute left-3 top-3" />
                   <input
                     type="text"
                     value={handle}
                     onChange={(e) => setHandle(e.target.value)}
                     required
                     placeholder="e.g. agent_builder"
-                    className="w-full pl-9 pr-3 py-2 border border-[#E2E8F0] bg-[#F8FAFC] rounded-md text-xs font-mono text-black outline-none focus:border-black"
+                    className="w-full pl-9 pr-3 py-2.5 border border-black/15 bg-black/[0.015] text-xs font-mono text-black uppercase tracking-wider outline-none focus:border-black"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-mono uppercase text-[#64748B] mb-1">
+              <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1.5">
                 EMAIL_ADDRESS
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
+                <Mail className="w-4 h-4 text-black/30 absolute left-3 top-3" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="developer@agenthub.ai"
-                  className="w-full pl-9 pr-3 py-2 border border-[#E2E8F0] bg-[#F8FAFC] rounded-md text-xs font-mono text-black outline-none focus:border-black"
+                  className="w-full pl-9 pr-3 py-2.5 border border-black/15 bg-black/[0.015] text-xs font-mono text-black tracking-wider outline-none focus:border-black"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-mono uppercase text-[#64748B] mb-1">
+              <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1.5">
                 PASSWORD
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
+                <Lock className="w-4 h-4 text-black/30 absolute left-3 top-3" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2 border border-[#E2E8F0] bg-[#F8FAFC] rounded-md text-xs font-mono text-black outline-none focus:border-black"
+                  className="w-full pl-9 pr-3 py-2.5 border border-black/15 bg-black/[0.015] text-xs font-mono text-black outline-none focus:border-black"
                 />
               </div>
             </div>
@@ -136,21 +135,21 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-solid-black py-2.5 text-xs font-semibold mt-2 justify-center"
+              className="w-full btn-solid-black py-3.5 text-[10px] font-mono font-bold uppercase tracking-widest mt-4 justify-center disabled:opacity-40"
             >
               {loading ? "Authenticating..." : mode === "login" ? "Sign In" : "Create Account"}
             </button>
           </form>
 
           {/* ── Mode Toggle ── */}
-          <div className="text-center mt-6 pt-4 border-t border-[#F1F5F9] text-xs font-sans text-[#64748B]">
+          <div className="text-center mt-8 pt-4 border-t border-black/10 text-xs font-mono text-black/50 uppercase">
             {mode === "login" ? (
               <span>
                 Need an account?{" "}
                 <button
                   type="button"
                   onClick={() => setMode("register")}
-                  className="font-bold text-black hover:underline"
+                  className="font-bold text-black hover:text-[#FF4500] underline ml-1"
                 >
                   Register
                 </button>
@@ -161,7 +160,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setMode("login")}
-                  className="font-bold text-black hover:underline"
+                  className="font-bold text-black hover:text-[#FF4500] underline ml-1"
                 >
                   Sign In
                 </button>
@@ -170,6 +169,10 @@ export default function LoginPage() {
           </div>
         </div>
       </main>
+
+      <footer className="border-t border-black/10 py-5 text-center text-[10px] font-mono text-black/40 uppercase tracking-widest">
+        AgentNet // High-Performance AI Infrastructure
+      </footer>
     </div>
   );
 }

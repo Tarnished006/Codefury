@@ -13,7 +13,8 @@ import {
   Layers,
   Sparkles,
   Zap,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { fetchCreators, fetchCreatorEarnings, requestCreatorPayout } from "@/lib/api";
@@ -88,42 +89,42 @@ export default function CreatorPage() {
     <div className="min-h-screen bg-white text-black">
       <NeuralNavbar />
 
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-24 pb-20">
+      <main className="max-w-[1600px] mx-auto px-6 lg:px-12 pt-24 pb-20 border-x border-black/10">
 
         {/* ── Header Bar ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E2E8F0] pb-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-black/10 pb-6 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="badge-mono bg-[#0284C7] text-white font-bold">DUAL_SIDED_MARKETPLACE</span>
-              <span className="font-mono text-xs text-[#64748B]">// Creator Studio & 80/20 Royalties</span>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="badge-mono bg-black text-white font-bold">DUAL_SIDED_MARKETPLACE</span>
+              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">// Creator Studio & 80/20 Royalties</span>
             </div>
-            <h1 className="font-sans font-black text-3xl sm:text-4xl text-black tracking-tight">
-              Creator Studio & Royalties
+            <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
+              creator studio.
             </h1>
           </div>
 
           {/* Revenue Split Badge */}
-          <div className="flex items-center gap-2 border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 rounded-lg text-xs font-mono">
+          <div className="flex items-center gap-3 border border-black/10 bg-black/[0.02] px-4 py-2 text-xs font-mono">
             <span className="text-[#10B981] font-bold">80% CREATOR ROYALTY</span>
-            <span className="text-[#CBD5E1]">/</span>
-            <span className="text-[#64748B]">20% PLATFORM TREASURY</span>
+            <span className="text-black/20">/</span>
+            <span className="text-black/60 font-semibold">20% PLATFORM TREASURY</span>
           </div>
         </div>
 
         {/* ── Creator Switcher Tabs ── */}
-        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
+        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none">
           {creators.map((c) => (
             <button
               key={c.id}
               onClick={() => setSelectedCreatorId(c.id)}
-              className={`px-4 py-2.5 text-xs font-sans font-semibold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${
+              className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2.5 ${
                 selectedCreatorId === c.id
-                  ? "bg-black text-white shadow-xs"
-                  : "bg-[#F8FAFC] text-[#64748B] hover:text-black border border-[#E2E8F0]"
+                  ? "bg-black text-white"
+                  : "bg-black/[0.02] text-black/50 hover:text-black border border-black/10"
               }`}
             >
               <span>{c.name}</span>
-              <span className="text-[0.62rem] font-mono px-1.5 py-0.5 rounded bg-white/20 text-current">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 bg-black/10 text-current">
                 {c.models_count} Models
               </span>
             </button>
@@ -132,180 +133,196 @@ export default function CreatorPage() {
 
         {/* ── Earnings Metric Cards ── */}
         {earnings && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-            <div className="border border-[#E2E8F0] bg-white rounded-lg p-6 shadow-xs">
-              <span className="font-mono text-xs text-[#64748B] uppercase block mb-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+            <div className="border border-black/10 bg-white p-8">
+              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest block mb-2">
                 AVAILABLE_FOR_PAYOUT
               </span>
-              <div className="font-sans font-black text-3xl text-black mb-1">
-                {earnings.pending_payout_credits.toFixed(2)} <span className="text-sm font-semibold text-[#64748B]">Credits</span>
+              <div className="font-sans font-extrabold text-4xl text-black mb-1">
+                {earnings.pending_payout_credits.toFixed(2)} <span className="text-sm font-mono text-black/50">Credits</span>
               </div>
-              <div className="text-xs font-mono text-[#10B981] font-semibold">
+              <div className="text-xs font-mono text-[#10B981] font-bold">
                 ≈ ${earnings.pending_payout_usd.toFixed(2)} USD
               </div>
             </div>
 
-            <div className="border border-[#E2E8F0] bg-white rounded-lg p-6 shadow-xs">
-              <span className="font-mono text-xs text-[#64748B] uppercase block mb-1">
+            <div className="border border-black/10 bg-white p-8">
+              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest block mb-2">
                 LIFETIME_ROYALTY_EARNINGS
               </span>
-              <div className="font-sans font-black text-3xl text-black mb-1">
-                {earnings.lifetime_earnings_credits.toFixed(2)} <span className="text-sm font-semibold text-[#64748B]">Credits</span>
+              <div className="font-sans font-extrabold text-4xl text-black mb-1">
+                {earnings.lifetime_earnings_credits.toFixed(2)} <span className="text-sm font-mono text-black/50">Credits</span>
               </div>
-              <div className="text-xs font-mono text-[#0284C7] font-semibold">
+              <div className="text-xs font-mono text-[#FF4500] font-bold">
                 ≈ ${earnings.lifetime_earnings_usd.toFixed(2)} USD
               </div>
             </div>
 
-            <div className="border border-[#E2E8F0] bg-[#F8FAFC] rounded-lg p-6 flex flex-col justify-between">
+            <div className="border border-black/10 bg-black/[0.015] p-8 flex flex-col justify-between">
               <div>
-                <span className="font-mono text-xs text-[#64748B] uppercase block mb-1">
-                  PAYOUT_SETTLEMENT
+                <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest block mb-2">
+                  SETTLEMENT_GATEWAY
                 </span>
-                <div className="text-xs font-sans text-[#475569] mb-3">
-                  Withdraw earned model inference revenue to fiat bank account or USDC crypto wallet.
+                <div className="text-xs font-mono text-black/70 mb-4 uppercase">
+                  Automatic Automated Clearing House (ACH) & Stripe Connect Payouts
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setPayoutReceipt(null);
-                  setPayoutError(null);
-                  setShowPayoutModal(true);
-                }}
-                className="btn-solid-black w-full py-2 text-xs font-semibold gap-1.5"
+                onClick={() => { setShowPayoutModal(true); setPayoutReceipt(null); }}
+                className="btn-solid-black w-full py-3.5"
               >
-                <Landmark className="w-3.5 h-3.5" />
                 <span>Request Payout</span>
+                <ArrowUpRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
 
-        {/* ── Published Models Portfolio ── */}
-        <div className="border border-[#E2E8F0] bg-white rounded-lg overflow-hidden shadow-xs">
-          <div className="p-4 bg-[#F8FAFC] border-b border-[#E2E8F0] flex items-center justify-between">
-            <span className="font-mono text-xs font-bold text-black uppercase">
-              PUBLISHED_MODELS // MONETIZATION_STATUS
-            </span>
-            <span className="font-mono text-xs text-[#10B981] font-semibold">
-              80% REVENUE SHARE ACTIVE
-            </span>
-          </div>
+        {/* ── Creator Models Registry ── */}
+        {earnings?.models && (
+          <div className="border border-black/10 bg-white overflow-hidden">
+            <div className="px-6 py-4 bg-black/[0.02] border-b border-black/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#FF4500]" />
+                <span className="font-mono text-xs font-bold text-black uppercase tracking-widest">
+                  PORTFOLIO_MODELS ({earnings.models.length})
+                </span>
+              </div>
+              <span className="font-mono text-[10px] text-black/40 uppercase">
+                AUTOMATIC 80% REVENUE MESH
+              </span>
+            </div>
 
-          <div className="p-6">
-            <p className="text-xs font-sans text-[#64748B] leading-relaxed">
-              Every inference stream executed through AgentHub automatically calculates token usage and allocates 80% of metered fees directly into the Creator's treasury wallet.
-            </p>
+            <div className="divide-y divide-black/10">
+              {earnings.models.map((m: any) => (
+                <div key={m.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-black/[0.015] transition-colors">
+                  <div>
+                    <div className="font-sans font-bold text-base text-black flex items-center gap-2">
+                      {m.name}
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                    </div>
+                    <div className="font-mono text-xs text-black/50 mt-0.5">
+                      {m.repo_id} · <span className="uppercase text-black/70">{m.task_tag}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6 text-xs font-mono">
+                    <div>
+                      <span className="text-[10px] text-black/40 uppercase block">PRICE</span>
+                      <strong className="text-black">${m.price_per_1k.toFixed(2)}/1k</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-black/40 uppercase block">SAFETY</span>
+                      <strong className="text-[#10B981]">{m.security_score}%</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-black/40 uppercase block">ROYALTY</span>
+                      <strong className="text-[#FF4500] font-bold">${(m.price_per_1k * 0.8).toFixed(3)}/1k</strong>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
-      {/* ── Payout Withdrawal Modal ── */}
+      {/* ── Payout Request Modal ── */}
       {showPayoutModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E2E8F0] rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-black/20 w-full max-w-md p-8 relative shadow-2xl">
             <button
               onClick={() => setShowPayoutModal(false)}
-              className="absolute top-4 right-4 text-[#94A3B8] hover:text-black"
+              className="absolute top-6 right-6 text-black/40 hover:text-black"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded bg-black flex items-center justify-center text-white">
-                <Landmark className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div>
-                <h3 className="font-sans font-bold text-base text-black">
-                  Request Creator Payout
-                </h3>
-                <span className="font-mono text-[0.68rem] text-[#64748B]">
-                  ID: {selectedCreatorId}
-                </span>
-              </div>
-            </div>
+            <h2 className="font-sans font-extrabold text-2xl text-black mb-1">
+              Initiate Creator Payout
+            </h2>
+            <p className="text-xs font-mono text-black/50 uppercase mb-6 tracking-wider">
+              80% Royalty Revenue Withdrawal
+            </p>
 
             {payoutReceipt ? (
-              <div className="space-y-4 pt-2">
-                <div className="bg-[#F0FDF4] border border-[#DCFCE7] p-4 rounded-lg text-center">
-                  <CheckCircle2 className="w-8 h-8 text-[#16A34A] mx-auto mb-2" />
-                  <h4 className="font-sans font-bold text-sm text-[#166534]">
-                    Payout Transfer Dispatched!
-                  </h4>
-                  <p className="text-xs font-mono text-[#15803D] mt-1">
-                    Amount: ${payoutReceipt.amount_usd.toFixed(2)} USD ({payoutReceipt.amount_credits} Credits)
-                  </p>
+              <div className="p-6 bg-[#F0FDF4] border border-[#DCFCE7] text-xs font-mono space-y-2">
+                <div className="flex items-center gap-2 text-[#16A34A] font-bold">
+                  <CheckCircle2 className="w-5 h-5" />
+                  PAYOUT DISPATCHED
                 </div>
-
-                <div className="border border-[#E2E8F0] bg-[#F8FAFC] p-3 rounded text-xs font-mono space-y-1">
-                  <div>REFERENCE: <strong className="text-black">{payoutReceipt.reference_id}</strong></div>
-                  <div>DESTINATION: <strong className="text-black">{payoutReceipt.destination_address}</strong></div>
-                  <div>STATUS: <span className="text-[#10B981] font-bold">{payoutReceipt.status}</span></div>
-                </div>
-
-                <button
-                  onClick={() => setShowPayoutModal(false)}
-                  className="btn-solid-black w-full py-2 text-xs font-semibold"
-                >
-                  Close Receipt
-                </button>
+                <div>TRANSFER ID: <strong className="text-black">{payoutReceipt.transfer_id}</strong></div>
+                <div>AMOUNT CREDITED: <strong className="text-black">${payoutReceipt.amount_usd.toFixed(2)} USD</strong></div>
+                <div>SETTLEMENT METHOD: <strong className="text-black uppercase">{payoutReceipt.payout_method}</strong></div>
               </div>
             ) : (
               <form onSubmit={handleExecutePayout} className="space-y-4">
                 {payoutError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 p-2.5 rounded text-xs font-sans">
-                    {payoutError}
+                  <div className="p-3 bg-red-50 border border-red-200 text-xs font-mono text-red-600 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{payoutError}</span>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#64748B] mb-1">
-                    WITHDRAWAL_METHOD
+                  <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1">
+                    WITHDRAWAL_CREDITS
+                  </label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={earnings?.pending_payout_credits || 1000}
+                    value={payoutAmount}
+                    onChange={(e) => setPayoutAmount(Number(e.target.value))}
+                    className="w-full border border-black/15 bg-black/[0.015] p-3 text-xs font-mono text-black outline-none focus:border-black"
+                  />
+                  <span className="text-[10px] font-mono text-black/40 mt-1 block">
+                    ≈ ${(payoutAmount * 0.01).toFixed(2)} USD
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1">
+                    PAYOUT_METHOD
                   </label>
                   <select
                     value={payoutMethod}
                     onChange={(e) => setPayoutMethod(e.target.value)}
-                    className="w-full border border-[#E2E8F0] bg-[#F8FAFC] rounded p-2 text-xs font-sans text-black"
+                    className="w-full border border-black/15 bg-black/[0.015] p-3 text-xs font-mono text-black outline-none focus:border-black uppercase"
                   >
-                    <option value="stripe_connect">Stripe Connect (US / Global ACH)</option>
-                    <option value="crypto_usdc">Crypto USDC (Polygon / Arbitrum)</option>
+                    <option value="stripe_connect">STRIPE CONNECT (ACH / DIRECT DEPOSIT)</option>
+                    <option value="crypto_usdc">USDC BASE SEPOLIA WALLET</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#64748B] mb-1">
+                  <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1">
                     DESTINATION_ACCOUNT
                   </label>
                   <input
                     type="text"
                     value={destAddress}
                     onChange={(e) => setDestAddress(e.target.value)}
-                    className="w-full border border-[#E2E8F0] bg-[#F8FAFC] rounded p-2 text-xs font-mono text-black"
-                    required
+                    className="w-full border border-black/15 bg-black/[0.015] p-3 text-xs font-mono text-black outline-none focus:border-black"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-mono uppercase text-[#64748B] mb-1">
-                    CREDIT_AMOUNT ({earnings ? `${earnings.pending_payout_credits.toFixed(0)} Max` : ""})
-                  </label>
-                  <input
-                    type="number"
-                    value={payoutAmount}
-                    onChange={(e) => setPayoutAmount(Number(e.target.value))}
-                    className="w-full border border-[#E2E8F0] bg-[#F8FAFC] rounded p-2 text-xs font-mono text-black"
-                    min={1}
-                    required
-                  />
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPayoutModal(false)}
+                    className="btn-outline flex-1 py-3 text-[10px]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={payoutLoading}
+                    className="btn-solid-black flex-1 py-3 text-[10px] disabled:opacity-40"
+                  >
+                    {payoutLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Payout"}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={payoutLoading}
-                  className="btn-solid-black w-full py-2.5 text-xs font-semibold mt-4"
-                >
-                  {payoutLoading ? "Processing Transfer..." : `Withdraw $${(payoutAmount * 0.01).toFixed(2)} USD`}
-                </button>
               </form>
             )}
           </div>
