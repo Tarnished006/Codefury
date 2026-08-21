@@ -1,144 +1,296 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { ArrowRight, Cpu, Shield, GitCompare, Code2, Activity, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight,
+  Cpu,
+  Shield,
+  GitCompare,
+  Code2,
+  Sparkles,
+  Zap,
+  CheckCircle,
+  Activity,
+  Layers,
+  Play,
+  Copy,
+  Check
+} from "lucide-react";
 
 // Load 3D WebGL Globe client-side only
 const OrchestratorGlobe = dynamic(() => import("./OrchestratorGlobe"), {
   ssr: false,
   loading: () => (
-    <div className="w-full max-w-[560px] aspect-square flex items-center justify-center">
-      <div className="w-80 h-80 rounded-full border border-dashed border-[#E4E4E7] flex items-center justify-center">
-        <span className="font-mono text-xs text-[#A1A1AA]">[ LOADING_MESH... ]</span>
+    <div className="w-full max-w-[540px] aspect-square flex items-center justify-center">
+      <div className="w-80 h-80 rounded-full border border-dashed border-[#E4E4E7] flex flex-col items-center justify-center gap-2">
+        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+        <span className="font-mono text-[0.65rem] text-[#71717A]">[ INITIALIZING_GPU_MESH... ]</span>
       </div>
     </div>
   ),
 });
 
+const DOMAINS = ["ALL_DOMAINS", "LLM_CHAT", "CODE_GEN", "VISION_AI", "HEALTHCARE", "FINANCE"];
+
 const MODELS = [
-  { id: "llama3",      name: "Llama 3 8B",      domain: "LLM",        ms: 42,  price: "0.12", hf: "meta-llama/Meta-Llama-3-8B-Instruct" },
-  { id: "deepseek",    name: "DeepSeek Coder",   domain: "Code",       ms: 38,  price: "0.08", hf: "deepseek-ai/deepseek-coder-6.7b-instruct" },
-  { id: "biomedlm",    name: "Med-LLaMA 3",      domain: "Healthcare", ms: 55,  price: "0.18", hf: "BioMistral/BioMistral-7B" },
-  { id: "llava",       name: "LLaVA Vision",     domain: "Vision",     ms: 61,  price: "0.22", hf: "llava-hf/llava-1.5-7b-hf" },
-  { id: "legalbert",   name: "LegalBERT",        domain: "Legal",      ms: 29,  price: "0.06", hf: "nlpaueb/legal-bert-base-uncased" },
-  { id: "fingpt",      name: "FinGPT Forecast",  domain: "Finance",    ms: 35,  price: "0.10", hf: "FinGPT/fingpt-forecaster" },
-  { id: "whisper",     name: "Whisper Large v3", domain: "Audio",      ms: 48,  price: "0.14", hf: "openai/whisper-large-v3" },
-  { id: "mistral",     name: "Mistral 7B Inst",  domain: "LLM",        ms: 33,  price: "0.09", hf: "mistralai/Mistral-7B-Instruct-v0.3" },
+  {
+    id: "llama3",
+    name: "Llama 3 8B Instruct",
+    domain: "LLM_CHAT",
+    tag: "Text Generation",
+    p50: 38,
+    hf: "meta-llama/Meta-Llama-3-8B-Instruct",
+    security: 98,
+    cost: "0.12",
+    context: "8,192 tokens",
+    status: "ONLINE",
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek Coder 6.7B",
+    domain: "CODE_GEN",
+    tag: "Code Synthesis",
+    p50: 32,
+    hf: "deepseek-ai/deepseek-coder-6.7b-instruct",
+    security: 96,
+    cost: "0.08",
+    context: "16,384 tokens",
+    status: "ONLINE",
+  },
+  {
+    id: "biomedlm",
+    name: "BioMistral 7B Medical",
+    domain: "HEALTHCARE",
+    tag: "Clinical Reasoning",
+    p50: 48,
+    hf: "BioMistral/BioMistral-7B",
+    security: 99,
+    cost: "0.18",
+    context: "4,096 tokens",
+    status: "ONLINE",
+  },
+  {
+    id: "llava",
+    name: "LLaVA 1.5 7B Vision",
+    domain: "VISION_AI",
+    tag: "Visual Question Answering",
+    p50: 56,
+    hf: "llava-hf/llava-1.5-7b-hf",
+    security: 94,
+    cost: "0.22",
+    context: "4,096 tokens",
+    status: "ONLINE",
+  },
+  {
+    id: "fingpt",
+    name: "FinGPT Forecaster",
+    domain: "FINANCE",
+    tag: "Financial Sentiment & Audit",
+    p50: 35,
+    hf: "FinGPT/fingpt-forecaster",
+    security: 97,
+    cost: "0.10",
+    context: "8,192 tokens",
+    status: "ONLINE",
+  },
+  {
+    id: "mistral",
+    name: "Mistral 7B Instruct v0.3",
+    domain: "LLM_CHAT",
+    tag: "Function Calling",
+    p50: 34,
+    hf: "mistralai/Mistral-7B-Instruct-v0.3",
+    security: 95,
+    cost: "0.09",
+    context: "32,768 tokens",
+    status: "ONLINE",
+  },
 ];
 
 const FEATURES = [
-  { icon: Cpu,        label: "Meta-Agent Orchestrator",    desc: "Autonomous task routing layer. Breaks complex multi-step workflows down and delegates to specialized models.", tag: "INTENT_ROUTING",     href: "/browse" },
-  { icon: GitCompare, label: "Model Matchmaker Arena",     desc: "Split-screen sandbox streaming 3 models simultaneously with live token throughput and cost comparisons.",       tag: "ARENA_STREAM",       href: "/arena" },
-  { icon: Shield,     label: "OWASP Red-Team Auditor",     desc: "Visual Security Radar analyzing resistance to Prompt Injection, Task Hijacking, and Context Leakage.",        tag: "SECURITY_RADAR",     href: "/browse" },
-  { icon: Code2,      label: "Live Code-to-Deploy Canvas", desc: "Browser-side interactive Monaco SDK canvas. Test your live deployed endpoint in Python or JavaScript.",       tag: "CODE_CANVAS",        href: "/browse" },
+  {
+    icon: Cpu,
+    tag: "PILLAR_01 // INTENT_ROUTER",
+    title: "Meta-Agent Orchestrator",
+    desc: "Autonomous task broker. Type complex goals — the orchestrator decomposes sub-tasks, queries model capabilities, and delegates to optimal specialists.",
+    badge: "Autonomous DAG Routing",
+  },
+  {
+    icon: GitCompare,
+    tag: "PILLAR_02 // 3_WAY_STREAM",
+    title: "Model Matchmaker Arena",
+    desc: "Split-screen benchmarking interface. Stream inferences from 3 models concurrently to compare token velocity, cost, and qualitative output in real-time.",
+    badge: "Real-time SSE Benchmark",
+  },
+  {
+    icon: Shield,
+    tag: "PILLAR_03 // RED_TEAM_SECURITY",
+    title: "OWASP Red-Team Auditor",
+    desc: "Automated vulnerability scanner generating a multi-axis Security Radar for Prompt Injection, Task Hijacking, and Training Data Extraction resistance.",
+    badge: "Automated Audit Engine",
+  },
+  {
+    icon: Code2,
+    tag: "PILLAR_04 // INSTANT_EXECUTION",
+    title: "Live Code-to-Deploy Canvas",
+    desc: "In-browser Monaco SDK editor. Instantly test your newly generated API key with Python or TypeScript snippets running against the live cluster.",
+    badge: "Interactive SDK Playground",
+  },
 ];
 
 export default function NeuralHero() {
+  const [selectedDomain, setSelectedDomain] = useState("ALL_DOMAINS");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const filteredModels =
+    selectedDomain === "ALL_DOMAINS"
+      ? MODELS
+      : MODELS.filter((m) => m.domain === selectedDomain);
+
+  const handleCopy = (hf: string) => {
+    navigator.clipboard.writeText(hf);
+    setCopiedId(hf);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   return (
     <div className="min-h-screen pt-16">
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TOP TELEMETRY HUD (Top-right corner HUD from reference)
+          TOP TELEMETRY STATUS HUD
          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 pt-6 flex justify-end">
-        <div className="border border-[#E4E4E7] bg-white p-2.5 grid grid-cols-2 gap-x-6 gap-y-1 text-[0.65rem] font-mono text-[#71717A]">
-          <div><span className="text-[#A1A1AA]">LAT</span> 37.7749° N</div>
-          <div><span className="text-[#A1A1AA]">LNG</span> 122.4194° W</div>
-          <div><span className="text-[#A1A1AA]">ALT</span> 0.021 KM</div>
-          <div><span className="text-[#A1A1AA]">NODE</span> #1,247</div>
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 pt-6 pb-2">
+        <div className="border border-[#E4E4E7] bg-[#FAFAFA] px-4 py-2.5 flex flex-wrap items-center justify-between gap-4 text-[0.68rem] font-mono text-[#71717A]">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="flex items-center gap-1.5 text-black font-semibold">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+              GLOBAL_GPU_MESH: ACTIVE
+            </span>
+            <span className="text-[#D4D4D8]">|</span>
+            <span>NODES: <strong className="text-black">842 GPUs</strong></span>
+            <span className="text-[#D4D4D8]">|</span>
+            <span>THROUGHPUT: <strong className="text-black">142.8M tok/day</strong></span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-white border border-[#E4E4E7] px-2 py-0.5 text-black font-semibold">
+              HF_SYNC: 100% HEALTHY
+            </span>
+            <span className="bg-black text-white px-2 py-0.5 font-semibold">
+              DEMO_MODE: ENABLED
+            </span>
+          </div>
         </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          HERO SECTION — Pixel Perfect to Reference Image
+          HERO SECTION — Clean High-Density Developer Aesthetic
          ═══════════════════════════════════════════════════════════════════ */}
-      <section className="max-w-[1440px] mx-auto px-6 lg:px-12 pt-4 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_560px] gap-8 items-center min-h-[580px]">
+      <section className="max-w-[1440px] mx-auto px-6 lg:px-12 pt-8 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center min-h-[560px]">
 
-          {/* ── LEFT COLUMN: Typography & CTAs ── */}
+          {/* ── LEFT COLUMN: Typography & Actions ── */}
           <div className="flex flex-col justify-center">
 
-            {/* Protocol System Header with line */}
-            <div className="flex items-center gap-3 mb-8">
-              <span className="font-mono text-[0.68rem] tracking-widest text-[#71717A] uppercase">
-                [ PROTOCOL_SYS_V2 ]
+            {/* Architecture version tag */}
+            <div className="flex items-center gap-2 mb-6">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-black text-white text-[0.65rem] font-mono font-bold uppercase tracking-wider">
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+                NEURAL_BAZAAR_V2
               </span>
-              <div className="w-16 h-[1px] bg-[#E4E4E7]" />
-              <span className="font-mono text-[0.68rem] tracking-widest text-[#A1A1AA]">
-                0X4A_73_D0_C7
+              <span className="font-mono text-[0.68rem] tracking-wider text-[#71717A]">
+                // OPEN_WEIGHT_AI_MARKETPLACE
               </span>
             </div>
 
-            {/* Main Title: agentnet */}
+            {/* Main Headline */}
             <motion.h1
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="font-sans font-black text-[clamp(3.5rem,7.5vw,6.5rem)] text-black leading-none tracking-[-0.05em] mb-6"
+              className="font-sans font-black text-[clamp(2.8rem,5.5vw,4.6rem)] text-black leading-[1.04] tracking-[-0.04em] mb-6"
             >
-              agentnet
+              The AI Model<br />
+              Marketplace &<br />
+              <span className="text-[#0284C7] underline decoration-[#0284C7]/30 decoration-2 underline-offset-8">
+                Autonomous Mesh.
+              </span>
             </motion.h1>
 
-            {/* Sub-headline */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.06 }}
-              className="text-2xl sm:text-3xl font-bold tracking-tight text-black mb-6"
-            >
-              The Global Standard for{" "}
-              <span className="text-[#71717A] font-semibold">Autonomous Intelligence.</span>
-            </motion.div>
-
-            {/* Monospace uppercase microcopy */}
+            {/* Technical Sub-headline */}
             <motion.p
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="font-mono text-[0.72rem] tracking-widest text-[#71717A] max-w-lg leading-relaxed uppercase mb-10"
+              transition={{ duration: 0.5, delay: 0.08 }}
+              className="text-base text-[#52525B] leading-relaxed max-w-xl mb-8 font-sans"
             >
-              DEPLOY, MONETIZE, AND SCALE AUTONOMOUS AGENTS ON A HIGH-PERFORMANCE X402 LIQUIDITY LAYER.
+              Discover, benchmark, and deploy open-weight Hugging Face models across global GPU clusters. Features real-time SSE token streaming, autonomous Meta-Agent task routing, and automated OWASP red-team security audits.
             </motion.p>
 
-            {/* Main Solid Black Button */}
+            {/* CTAs */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="flex items-center gap-4 mb-10"
+              transition={{ duration: 0.5, delay: 0.14 }}
+              className="flex flex-wrap items-center gap-3 mb-10"
             >
+              <a
+                href="#model-catalog"
+                className="btn-solid-black inline-flex items-center gap-3 group"
+              >
+                <span>EXPLORE MODEL CATALOG</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              </a>
+
               <Link
                 href="/browse"
-                className="btn-solid-black inline-flex items-center gap-4 group"
+                className="btn-outline inline-flex items-center gap-2"
               >
-                <span>ENTER MARKETPLACE</span>
-                <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-1 transition-transform" />
+                <GitCompare className="w-3.5 h-3.5 text-[#0284C7]" />
+                <span>LAUNCH ARENA (3-WAY)</span>
               </Link>
             </motion.div>
 
-            {/* Status verification row */}
+            {/* Spec Matrix Pills */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="flex items-center gap-6 text-[0.7rem] font-mono text-[#71717A]"
+              className="grid grid-cols-3 gap-px border border-[#E4E4E7] bg-[#E4E4E7]"
             >
-              <div className="flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-[#EF4444]" />
-                <span>1.2K NODES</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#71717A]" />
-                <span>VERIFIED</span>
-              </div>
+              {[
+                { label: "P50 INFERENCE", val: "38ms avg" },
+                { label: "SECURITY AUDIT", val: "OWASP Top 10" },
+                { label: "PROVISIONED WALLET", val: "500 Credits" },
+              ].map((item) => (
+                <div key={item.label} className="bg-white p-3">
+                  <div className="text-[0.6rem] font-mono uppercase text-[#71717A] mb-0.5">{item.label}</div>
+                  <div className="text-xs font-mono font-bold text-black">{item.val}</div>
+                </div>
+              ))}
             </motion.div>
           </div>
 
           {/* ── RIGHT COLUMN: Interactive 3D Globe ── */}
-          <div className="flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-full flex items-center justify-between mb-2 px-2">
+              <span className="font-mono text-[0.65rem] text-[#71717A] font-semibold">
+                [ 3D_GPU_ORCHESTRATION_MESH ]
+              </span>
+              <span className="font-mono text-[0.65rem] text-[#10B981] font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                REAL-TIME TELEMETRY
+              </span>
+            </div>
+
             <OrchestratorGlobe />
+
+            <div className="w-full flex items-center justify-between mt-2 px-2 text-[0.62rem] font-mono text-[#71717A]">
+              <span>SF ➔ NYC ➔ LONDON ➔ MUMBAI ➔ TOKYO</span>
+              <span className="text-black font-semibold">ROTATING LIVE</span>
+            </div>
           </div>
         </div>
       </section>
@@ -146,60 +298,145 @@ export default function NeuralHero() {
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION DIVIDER
          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-12">
-        <div className="flex items-center gap-4 border-t border-[#E4E4E7] pt-4 pb-8">
-          <span className="bracket-label text-black">[ MODEL_MARKETPLACE_V1 ]</span>
+      <div id="model-catalog" className="max-w-[1440px] mx-auto px-6 lg:px-12">
+        <div className="flex items-center gap-4 border-t border-[#E4E4E7] pt-8 pb-4">
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-black flex items-center gap-2">
+            <Layers className="w-4 h-4 text-[#0284C7]" />
+            MODEL_MARKETPLACE // HUGGING_FACE_ECOSYSTEM
+          </span>
           <div className="flex-1 border-t border-dashed border-[#E4E4E7]" />
-          <span className="bracket-label">8 ENDPOINTS · HF_HUB_SYNC: ACTIVE</span>
+          <span className="font-mono text-[0.68rem] text-[#71717A]">
+            6 CURATED ENDPOINTS READY
+          </span>
         </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          MODEL CATALOG TABLE
+          INTERACTIVE MODEL CATALOG (Domain Filter + High-Density Table)
          ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-[1440px] mx-auto px-6 lg:px-12 pb-16">
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 mb-2 px-4 text-[0.65rem] font-mono text-[#A1A1AA] uppercase tracking-wider hidden lg:grid">
-          <span>MODEL_IDENTIFIER</span>
-          <span>DOMAIN</span>
-          <span>P50_LATENCY</span>
-          <span>PRICE_1K_TOKENS</span>
-          <span></span>
+
+        {/* Domain Filter Bar */}
+        <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-2">
+          {DOMAINS.map((domain) => (
+            <button
+              key={domain}
+              onClick={() => setSelectedDomain(domain)}
+              className={`px-3 py-1.5 text-xs font-mono tracking-wider uppercase transition-all whitespace-nowrap ${
+                selectedDomain === domain
+                  ? "bg-black text-white font-bold"
+                  : "bg-[#F4F4F5] text-[#71717A] hover:text-black border border-[#E4E4E7]"
+              }`}
+            >
+              {domain.replace("_", " ")}
+            </button>
+          ))}
         </div>
 
+        {/* Model Data Table */}
         <div className="border border-[#E4E4E7] bg-white divide-y divide-[#E4E4E7]">
-          {MODELS.map((m, i) => (
-            <Link key={m.id} href="/browse">
-              <div className="group grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-4 hover:bg-[#FAFAFA] transition-colors cursor-pointer">
+          {/* Table Headers */}
+          <div className="grid grid-cols-[1.5fr_1fr_0.8fr_0.8fr_0.8fr_1fr] gap-4 items-center px-5 py-3 bg-[#FAFAFA] text-[0.65rem] font-mono text-[#71717A] uppercase tracking-wider hidden lg:grid">
+            <span>MODEL & REPO</span>
+            <span>DOMAIN / TASK</span>
+            <span>P50 LATENCY</span>
+            <span>SECURITY AUDIT</span>
+            <span>PRICE / 1K TOKENS</span>
+            <span className="text-right">QUICK ACTION</span>
+          </div>
+
+          <AnimatePresence mode="sync">
+            {filteredModels.map((m) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="group grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_0.8fr_0.8fr_0.8fr_1fr] gap-4 items-center px-5 py-4 hover:bg-[#FAFAFA] transition-colors"
+              >
+                {/* Model Name + Repo Copy */}
                 <div>
-                  <div className="font-sans font-bold text-sm text-black group-hover:text-black">
+                  <div className="font-sans font-bold text-sm text-black group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     {m.name}
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
                   </div>
-                  <div className="font-mono text-[0.65rem] text-[#71717A] mt-0.5">{m.hf}</div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="font-mono text-[0.65rem] text-[#71717A] truncate max-w-[280px]">
+                      {m.hf}
+                    </span>
+                    <button
+                      onClick={() => handleCopy(m.hf)}
+                      className="text-[#A1A1AA] hover:text-black transition-colors"
+                      title="Copy Hugging Face Model ID"
+                    >
+                      {copiedId === m.hf ? (
+                        <Check className="w-3 h-3 text-[#10B981]" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Domain & Task Tag */}
                 <div>
-                  <span className="font-mono text-[0.65rem] font-semibold px-2 py-0.5 bg-[#F4F4F5] border border-[#E4E4E7] text-black uppercase">
-                    {m.domain}
+                  <span className="font-mono text-[0.65rem] font-bold px-2 py-0.5 bg-[#F4F4F5] border border-[#E4E4E7] text-black uppercase">
+                    {m.tag}
+                  </span>
+                  <div className="font-mono text-[0.62rem] text-[#71717A] mt-1">
+                    CTX: {m.context}
+                  </div>
+                </div>
+
+                {/* Latency */}
+                <div className="font-mono text-xs text-black font-semibold flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-[#0284C7]" />
+                  {m.p50}ms
+                </div>
+
+                {/* Security Radar Score */}
+                <div className="flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-[#10B981]" />
+                  <span className="font-mono text-xs font-bold text-[#10B981]">
+                    {m.security}% SAFE
                   </span>
                 </div>
-                <div className="font-mono text-xs text-[#71717A]">{m.ms}ms</div>
-                <div className="font-mono text-xs text-black font-semibold">${m.price}</div>
-                <div className="flex items-center gap-1 text-[0.68rem] font-mono uppercase tracking-widest text-black group-hover:underline">
-                  Inspect <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+
+                {/* Cost */}
+                <div className="font-mono text-xs text-black font-semibold">
+                  ${m.cost} <span className="text-[0.65rem] font-normal text-[#71717A]">/ 1k</span>
                 </div>
-              </div>
-            </Link>
-          ))}
+
+                {/* Actions */}
+                <div className="flex items-center justify-start lg:justify-end gap-2">
+                  <Link
+                    href="/browse"
+                    className="btn-solid-black py-1.5 px-3 text-[0.65rem] inline-flex items-center gap-1"
+                  >
+                    <Play className="w-2.5 h-2.5 fill-white" />
+                    <span>TEST DRIVE</span>
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          PLATFORM MODULES
+          CORE ARCHITECTURAL PILLARS (4 Distinct Modules)
          ═══════════════════════════════════════════════════════════════════ */}
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12">
-        <div className="flex items-center gap-4 border-t border-[#E4E4E7] pt-4 pb-8">
-          <span className="bracket-label text-black">[ SYSTEM_CAPABILITIES ]</span>
+        <div className="flex items-center gap-4 border-t border-[#E4E4E7] pt-8 pb-4">
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-black flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-[#10B981]" />
+            PLATFORM_ARCHITECTURE // 4_CORE_MODULES
+          </span>
           <div className="flex-1 border-t border-dashed border-[#E4E4E7]" />
-          <span className="bracket-label">4 MODULES ACTIVE</span>
+          <span className="font-mono text-[0.68rem] text-[#71717A]">
+            BUILT FOR ENTERPRISE AI OPERATIONS
+          </span>
         </div>
       </div>
 
@@ -208,22 +445,32 @@ export default function NeuralHero() {
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
-              <Link key={f.tag} href={f.href}>
-                <div className="bg-white p-6 hover:bg-[#FAFAFA] transition-colors h-full flex flex-col justify-between">
+              <Link key={f.tag} href="/browse">
+                <div className="bg-white p-7 hover:bg-[#FAFAFA] transition-colors h-full flex flex-col justify-between group">
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className="bracket-label text-black">[ {f.tag} ]</span>
-                      <Icon className="w-4 h-4 text-black" />
+                      <span className="font-mono text-[0.65rem] tracking-wider text-[#71717A] uppercase">
+                        {f.tag}
+                      </span>
+                      <div className="w-8 h-8 bg-[#F4F4F5] border border-[#E4E4E7] flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
+                        <Icon className="w-4 h-4" />
+                      </div>
                     </div>
-                    <h3 className="font-sans font-bold text-base text-black mb-2">
-                      {f.label}
+                    <h3 className="font-sans font-bold text-lg text-black mb-2 group-hover:text-[#0284C7] transition-colors">
+                      {f.title}
                     </h3>
-                    <p className="text-[#71717A] text-xs font-mono leading-relaxed mb-6">
+                    <p className="text-[#52525B] text-xs font-sans leading-relaxed mb-6">
                       {f.desc}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 text-[0.68rem] font-mono uppercase tracking-widest text-black font-semibold">
-                    OPEN MODULE <ArrowRight className="w-3 h-3" />
+                  <div className="flex items-center justify-between pt-4 border-t border-[#F4F4F5]">
+                    <span className="font-mono text-[0.65rem] text-[#10B981] font-semibold flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      {f.badge}
+                    </span>
+                    <span className="font-mono text-[0.68rem] uppercase tracking-wider text-black font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      EXPLORE <ArrowRight className="w-3 h-3" />
+                    </span>
                   </div>
                 </div>
               </Link>
@@ -235,18 +482,18 @@ export default function NeuralHero() {
       {/* ═══════════════════════════════════════════════════════════════════
           FOOTER STATUS BAR
          ═══════════════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-[#E4E4E7] bg-white py-4">
+      <footer className="border-t border-[#E4E4E7] bg-white py-5">
         <div className="max-w-[1440px] mx-auto px-6 lg:px-12 flex items-center justify-between flex-wrap gap-4 text-[0.68rem] font-mono text-[#71717A]">
           <div className="flex items-center gap-4">
-            <span className="font-bold text-black">agentnet</span>
+            <span className="font-bold text-black">NEURALBAZAAR AI</span>
             <span>//</span>
-            <span>DEMO_MODE=true</span>
+            <span>HUGGING_FACE_INTEGRATION</span>
             <span>//</span>
-            <span>BUILD: CODEFURY_2026</span>
+            <span>CODEFURY_HACKATHON</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-            <span className="text-black font-semibold">ALL SYSTEMS NORMAL</span>
+            <span className="text-black font-semibold">ALL CLUSTERS OPERATIONAL</span>
           </div>
         </div>
       </footer>

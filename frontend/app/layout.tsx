@@ -18,18 +18,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://agentnet.ai"),
-  title: "agentnet — The Global Standard for Autonomous Intelligence",
+  metadataBase: new URL("https://neuralbazaar.ai"),
+  title: "NeuralBazaar — AI Model Marketplace & Autonomous Orchestration Mesh",
   description:
-    "Deploy, monetize, and scale autonomous AI agents on a high-performance liquidity layer.",
-  keywords: ["agentnet", "AI marketplace", "Hugging Face", "model deployment", "autonomous intelligence"],
-  authors: [{ name: "agentnet Team" }],
-  creator: "agentnet",
+    "Discover, benchmark, and deploy open-weight Hugging Face models across high-throughput GPU clusters with autonomous Meta-Agent routing and OWASP security audits.",
+  keywords: ["NeuralBazaar", "AI marketplace", "Hugging Face", "LLM deployment", "Meta-Agent", "OWASP AI security"],
+  authors: [{ name: "NeuralBazaar Engineering Team" }],
+  creator: "NeuralBazaar",
   openGraph: {
-    title: "agentnet — The Global Standard for Autonomous Intelligence",
-    description: "Deploy, monetize, and scale autonomous AI agents on a high-performance liquidity layer.",
-    url: "https://agentnet.ai",
-    siteName: "agentnet",
+    title: "NeuralBazaar — AI Model Marketplace & Autonomous Orchestration Mesh",
+    description: "Discover, benchmark, and deploy open-weight Hugging Face models with autonomous Meta-Agent routing.",
+    url: "https://neuralbazaar.ai",
+    siteName: "NeuralBazaar",
     type: "website",
   },
   robots: { index: true, follow: true },
