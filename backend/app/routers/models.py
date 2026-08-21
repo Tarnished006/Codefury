@@ -23,8 +23,14 @@ DEPLOYMENTS_DIR.mkdir(exist_ok=True)
 @router.get("", response_model=List[AIModelResponse])
 async def list_models(domain: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     query = select(AIModel).options(selectinload(AIModel.creator))
-    if domain and domain != "ALL_DOMAINS":
-        query = query.filter(AIModel.domain == domain)
+    if domain and domain.upper() not in ["ALL_DOMAINS", "ALL DOMAINS"]:
+        d_space = domain.replace("_", " ").upper()
+        d_under = domain.replace(" ", "_").upper()
+        query = query.filter(
+            (AIModel.domain == domain) |
+            (AIModel.domain == d_space) |
+            (AIModel.domain == d_under)
+        )
     result = await db.execute(query)
     models = result.scalars().all()
     
@@ -75,7 +81,7 @@ async def get_model(model_id: str, db: AsyncSession = Depends(get_db)):
 async def upload_model_artifact(
     file: UploadFile = File(...),
     model_name: str = Form("Custom Trained Model"),
-    domain: str = Form("CODE_GEN"),
+    domain: str = Form("CODE GEN"),
     user_id: str = Form("usr_guest_demo"),
     db: AsyncSession = Depends(get_db)
 ):
@@ -94,7 +100,7 @@ async def upload_model_artifact(
     dep = Deployment(
         id=deployment_id,
         user_id=user_id,
-        model_id="deepseek",
+        model_id="deepseek-coder-67b-instruct",
         endpoint_url=endpoint_url,
         status="ACTIVE"
     )

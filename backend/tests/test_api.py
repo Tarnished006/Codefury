@@ -48,16 +48,22 @@ async def test_strict_auth_register_and_login():
         assert r_me.json()["email"] == unique_email
 
 @pytest.mark.asyncio
-async def test_2026_models_catalog():
+async def test_expanded_50_models_catalog_and_domains():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # All models
         r = await client.get("/api/models")
         assert r.status_code == 200
         models = r.json()
-        assert len(models) >= 10
-        assert any(m["id"] == "llama4_scout" for m in models)
-        assert any(m["id"] == "qwen3_6" for m in models)
-        assert any(m["id"] == "deepseek_v4" for m in models)
+        assert len(models) >= 50
+        
+        # Domain filtering tests
+        domains = ["LLM CHAT", "CODE GEN", "VISION AI", "HEALTHCARE", "FINANCE"]
+        for dom in domains:
+            r_dom = await client.get(f"/api/models?domain={dom}")
+            assert r_dom.status_code == 200
+            dom_models = r_dom.json()
+            assert len(dom_models) >= 10, f"Domain {dom} should have at least 10 verified models"
 
 @pytest.mark.asyncio
 async def test_meta_agent_orchestrator():
@@ -74,7 +80,7 @@ async def test_meta_agent_orchestrator():
 async def test_owasp_security_audit():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        r = await client.get("/api/audit/llama4_scout")
+        r = await client.get("/api/audit/llama3-8b-instruct")
         assert r.status_code == 200
         res = r.json()
         assert res["overall_score"] >= 80
@@ -87,8 +93,8 @@ async def test_sandbox_execution():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         payload = {
             "language": "python",
-            "code": "print('AgentHub 2026 Sandbox OK')",
-            "model_id": "llama4_scout"
+            "code": "print('AgentHub 50+ Models Sandbox OK')",
+            "model_id": "llama3-8b-instruct"
         }
         r = await client.post("/api/sandbox/execute", json=payload)
         assert r.status_code == 200
