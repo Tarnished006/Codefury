@@ -10,7 +10,8 @@ from app.routers import (
     orchestrator_router,
     audit_router,
     sandbox_router,
-    wallet_router
+    wallet_router,
+    creators_router
 )
 
 @asynccontextmanager
@@ -23,7 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="High-Throughput Open-Weight AI Model Marketplace & Autonomous Orchestration API",
+    description="Multi-User, Dual-Sided AI Model Marketplace, Budget-Aware Meta-Agent & Double-Entry Ledger API",
     lifespan=lifespan
 )
 
@@ -44,17 +45,23 @@ app.include_router(orchestrator_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
 app.include_router(sandbox_router, prefix=settings.API_V1_STR)
 app.include_router(wallet_router, prefix=settings.API_V1_STR)
+app.include_router(creators_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
     return {
-        "service": "AgentHub AI Marketplace & Orchestration Engine",
+        "service": "AgentHub AI Marketplace & Economic Engine",
         "version": settings.VERSION,
         "status": "OPERATIONAL",
+        "pillars": [
+            "Budget-Aware Meta-Agent",
+            "Double-Entry Ledger (80/20 Creator Split)",
+            "High-Concurrency Multi-User Engine"
+        ],
         "docs_url": "/docs",
         "demo_mode": settings.DEMO_MODE
     }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "gpu_clusters": 8, "p50_latency_ms": 38}
+    return {"status": "healthy", "gpu_clusters": 8, "p50_latency_ms": 38, "concurrency_engine": "asyncio_pooled"}

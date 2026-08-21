@@ -5,3 +5,4 @@ from app.routers.orchestrator import router as orchestrator_router
 from app.routers.audit import router as audit_router
 from app.routers.sandbox import router as sandbox_router
 from app.routers.wallet import router as wallet_router
+from app.routers.creators import router as creators_router
