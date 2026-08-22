@@ -39,7 +39,7 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.database import get_db, AsyncSessionLocal
 from app.dependencies import verify_api_key
-from app.models import ApiKey, AIModel, RegisteredEndpoint, User
+from app.models import ApiKey, AIModel, RegisteredEndpoint, User, PurchasedModel, Creator
 from app.services.llm_service import llm_service
 from app.services.ledger_service import ledger_service
 
@@ -278,6 +278,41 @@ async def chat_completions(
     endpoint_obj = ep_res.scalars().first()
     if endpoint_obj:
         price_per_1k = endpoint_obj.price_per_1k_tokens
+
+    # Verify model is purchased/licensed by the user account
+    user_id = api_key.user_id
+    target_model_id = model_obj.id if model_obj else req.model
+    
+    p_res = await db.execute(
+        select(PurchasedModel).filter(
+            PurchasedModel.user_id == user_id,
+            ((PurchasedModel.model_id == target_model_id) | (PurchasedModel.model_id == req.model))
+        )
+    )
+    has_purchased = p_res.scalars().first() is not None
+
+    if not has_purchased and model_obj and model_obj.creator_id:
+        c_res = await db.execute(select(Creator).filter(Creator.id == model_obj.creator_id, Creator.user_id == user_id))
+        if c_res.scalars().first():
+            has_purchased = True
+
+    if not has_purchased and endpoint_obj and endpoint_obj.developer_id == user_id:
+        has_purchased = True
+
+    if not has_purchased:
+        all_user_purchases = await db.execute(select(PurchasedModel).filter(PurchasedModel.user_id == user_id))
+        user_purchases = all_user_purchases.scalars().all()
+        if user_purchases:
+            purchased_names = ", ".join([p.model_id for p in user_purchases[:3]])
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Model '{req.model}' is not licensed for this API key. Licensed models: [{purchased_names}]. Please purchase '{req.model}' in the Marketplace."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Model '{req.model}' is not licensed for this API key. Please unlock model access in the AgentHub Marketplace."
+            )
 
     # ── Non-Streaming Mode ─────────────────────────────────────────────────────
     if not req.stream:

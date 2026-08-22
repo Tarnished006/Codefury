@@ -3,10 +3,11 @@ Unit & Integration Tests for OpenAI-Compatible Inference Gateway
 ================================================================
 Verifies:
   1. API key authentication & rejection of invalid/revoked keys (401).
-  2. Successful chat completion proxying with OpenAI JSON schema.
-  3. Proper credit deduction and balance update in SQLite.
-  4. Streaming SSE chunks format (data: {...} ... data: [DONE]).
-  5. List models endpoint (/v1/models).
+  2. Gateway rejects unpurchased/unlicensed models (403 Forbidden).
+  3. Successful chat completion proxying with OpenAI JSON schema.
+  4. Proper credit deduction and balance update in SQLite.
+  5. Streaming SSE chunks format (data: {...} ... data: [DONE]).
+  6. List models endpoint (/v1/models).
 """
 
 import sys
@@ -23,7 +24,7 @@ from sqlalchemy.future import select
 
 from app.main import app
 from app.database import AsyncSessionLocal
-from app.models import User, ApiKey, AIModel
+from app.models import User, ApiKey, AIModel, PurchasedModel
 
 
 @pytest.mark.asyncio
@@ -49,6 +50,59 @@ async def test_gateway_rejects_missing_or_invalid_key():
         )
         assert resp_invalid.status_code == 401
         assert "Invalid or revoked" in resp_invalid.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_gateway_rejects_unpurchased_model_with_403():
+    transport = ASGITransport(app=app)
+    
+    raw_key = f"ah_live_unpur_{uuid.uuid4().hex[:16]}"
+    prefix = raw_key[:12]
+    hashed = hashlib.sha256(raw_key.encode()).hexdigest()
+    user_id = f"usr_unpur_{uuid.uuid4().hex[:8]}"
+    key_id = f"key_unpur_{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as db:
+        test_user = User(
+            id=user_id,
+            email=f"unpur_{uuid.uuid4().hex[:6]}@example.com",
+            handle=f"unpur_{uuid.uuid4().hex[:4]}",
+            hashed_password="hashed_test_pass"
+        )
+        test_key = ApiKey(
+            id=key_id,
+            user_id=user_id,
+            name="Unpurchased Test Key",
+            key_prefix=prefix,
+            hashed_key=hashed,
+            credits_balance=100.0,
+            is_active=True,
+            created_at=datetime.datetime.utcnow()
+        )
+        # Seed ONLY llama3-8b-instruct as purchased
+        purchased = PurchasedModel(
+            id=f"pur_{uuid.uuid4().hex[:8]}",
+            user_id=user_id,
+            model_id="llama3-8b-instruct",
+            price_paid=100.0
+        )
+        db.add(test_user)
+        db.add(test_key)
+        db.add(purchased)
+        await db.commit()
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Attempt to call unpurchased deepseek-r1
+        resp = await client.post(
+            "/v1/chat/completions",
+            headers={"Authorization": f"Bearer {raw_key}"},
+            json={
+                "model": "deepseek-r1",
+                "messages": [{"role": "user", "content": "Calculate"}]
+            }
+        )
+        assert resp.status_code == 403
+        assert "not licensed" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -81,8 +135,16 @@ async def test_gateway_successful_completion_and_balance_deduction():
             is_active=True,
             created_at=datetime.datetime.utcnow()
         )
+        # Grant purchase license for test model
+        purchased = PurchasedModel(
+            id=f"pur_{uuid.uuid4().hex[:8]}",
+            user_id=user_id,
+            model_id="llama3-8b-instruct",
+            price_paid=100.0
+        )
         db.add(test_user)
         db.add(test_key)
+        db.add(purchased)
         await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -147,8 +209,15 @@ async def test_gateway_streaming_sse_format():
             is_active=True,
             created_at=datetime.datetime.utcnow()
         )
+        purchased = PurchasedModel(
+            id=f"pur_{uuid.uuid4().hex[:8]}",
+            user_id=user_id,
+            model_id="llama3-8b-instruct",
+            price_paid=100.0
+        )
         db.add(test_user)
         db.add(test_key)
+        db.add(purchased)
         await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:

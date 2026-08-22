@@ -541,20 +541,20 @@ export default function NeuralHero() {
                 </div>
 
                 <div className="font-mono text-xs text-black font-bold">
-                  ${m.price_per_1k ? m.price_per_1k.toFixed(2) : "0.12"}{" "}
-                  <span className="text-[10px] font-normal text-black/40">/ 1k</span>
+                  {m.price_per_1k ? m.price_per_1k.toFixed(2) : "1.20"}{" "}
+                  <span className="text-[10px] font-normal text-black/40">CR / 1k</span>
                 </div>
 
                 <div className="flex items-center justify-end gap-2">
                   {purchasedModelIds.includes(m.id) ? (
                     <>
-                      <span className="font-mono text-[8px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 uppercase">
+                      <span className="font-sans text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 uppercase rounded-sm">
                         Purchased
                       </span>
                       <button
                         onClick={() => handleTest(m.id)}
                         disabled={testLoading === m.id}
-                        className="px-2.5 py-1.5 bg-black text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-[#FF4500] transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 bg-black text-white text-[10px] font-sans font-semibold uppercase tracking-wide hover:bg-[#FF4500] transition-all rounded-sm disabled:opacity-50 active:scale-[0.98]"
                       >
                         {testLoading === m.id ? "Testing..." : "Test Model"}
                       </button>
@@ -562,14 +562,14 @@ export default function NeuralHero() {
                   ) : (
                     <button
                       onClick={() => openPurchaseModal(m)}
-                      className="px-2.5 py-1.5 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors"
+                      className="px-3 py-1.5 bg-[#FF4500] text-white text-[10px] font-sans font-semibold uppercase tracking-wide hover:bg-black transition-all rounded-sm active:scale-[0.98]"
                     >
-                      Buy Model (100 CR)
+                      Buy Model ({m.purchase_price ? m.purchase_price.toFixed(0) : "100"} CR)
                     </button>
                   )}
                   <Link
                     href={`/arena?model=${encodeURIComponent(m.id)}`}
-                    className="btn-solid-black py-1.5 px-2.5 text-[9px] font-mono font-bold uppercase tracking-widest inline-flex items-center gap-1"
+                    className="btn-solid-black py-1.5 px-3 text-[10px] font-sans font-semibold uppercase tracking-wide inline-flex items-center gap-1 rounded-sm"
                   >
                     <Play className="w-2.5 h-2.5 fill-white" />
                     <span>Benchmark</span>
@@ -658,7 +658,7 @@ export default function NeuralHero() {
                 </div>
                 <div>
                   <span className="text-[9px] text-black/40 block uppercase">PRICE</span>
-                  <strong className="text-black">${m.price_per_1k ? m.price_per_1k.toFixed(2) : "0.12"}</strong>
+                  <strong className="text-black">{m.price_per_1k ? m.price_per_1k.toFixed(2) : "1.20"} CR</strong>
                 </div>
               </div>
 
@@ -666,13 +666,13 @@ export default function NeuralHero() {
                 <div className="flex gap-2">
                   {purchasedModelIds.includes(m.id) ? (
                     <>
-                      <div className="flex-1 flex items-center justify-center font-mono text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 uppercase py-2">
+                      <div className="flex-1 flex items-center justify-center font-sans text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 uppercase py-2 rounded-sm">
                         Purchased
                       </div>
                       <button
                         onClick={() => handleTest(m.id)}
                         disabled={testLoading === m.id}
-                        className="flex-1 py-2 bg-black text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-[#FF4500] transition-colors disabled:opacity-50"
+                        className="flex-1 py-2 bg-black text-white text-[10px] font-sans font-semibold uppercase tracking-wide hover:bg-[#FF4500] transition-all rounded-sm disabled:opacity-50 active:scale-[0.98]"
                       >
                         {testLoading === m.id ? "Testing..." : "Test Model"}
                       </button>
@@ -680,16 +680,16 @@ export default function NeuralHero() {
                   ) : (
                     <button
                       onClick={() => openPurchaseModal(m)}
-                      className="w-full py-2 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors"
+                      className="w-full py-2 bg-[#FF4500] text-white text-[10px] font-sans font-semibold uppercase tracking-wide hover:bg-black transition-all rounded-sm active:scale-[0.98]"
                     >
-                      Buy Model (100 CR)
+                      Buy Model ({m.purchase_price ? m.purchase_price.toFixed(0) : "100"} CR)
                     </button>
                   )}
                 </div>
 
                 <Link
                   href={`/arena?model=${encodeURIComponent(m.id)}`}
-                  className="btn-solid-black w-full py-2 text-[9px] flex items-center justify-center gap-1"
+                  className="btn-solid-black w-full py-2 text-[10px] font-sans font-semibold uppercase tracking-wide flex items-center justify-center gap-1 rounded-sm"
                 >
                   <Play className="w-2.5 h-2.5 fill-white" />
                   <span>Benchmark Model</span>

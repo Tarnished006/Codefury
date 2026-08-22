@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   User as UserIcon,
   Mail,
@@ -11,6 +12,7 @@ import {
   History,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Calendar,
   Layers,
@@ -28,7 +30,8 @@ import {
   Sparkles,
   Zap,
   Server,
-  Activity
+  Activity,
+  ShoppingBag
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
@@ -58,7 +61,7 @@ export default function ProfilePage() {
 
   // API Playground & Test Runner State
   const [testKey, setTestKey] = useState<string>("");
-  const [testModel, setTestModel] = useState<string>("llama3-8b-instruct");
+  const [testModel, setTestModel] = useState<string>("");
   const [testPrompt, setTestPrompt] = useState<string>("Explain quantum computing in two concise sentences.");
   const [testingKey, setTestingKey] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<any>(null);
@@ -80,9 +83,16 @@ export default function ProfilePage() {
       ]);
 
       if (data.status === "fulfilled") {
-        setProfileData(data.value);
-        setHandle(data.value.handle);
-        setEmail(data.value.email);
+        const pVal = data.value;
+        setProfileData(pVal);
+        setHandle(pVal.handle);
+        setEmail(pVal.email);
+        if (pVal.purchased_models && pVal.purchased_models.length > 0) {
+          setTestModel((prev) => {
+            const hasExisting = pVal.purchased_models.some((m: any) => m.model_id === prev);
+            return hasExisting ? prev : pVal.purchased_models[0].model_id;
+          });
+        }
       } else {
         setError(data.reason?.message || "Failed to load profile details.");
       }
@@ -414,10 +424,10 @@ main();`
                 <button
                   type="submit"
                   disabled={updateLoading}
-                  className="w-full py-2.5 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-40"
+                  className="w-full py-2.5 bg-black text-white hover:bg-[#FF4500] font-sans text-xs font-semibold uppercase tracking-wide flex items-center justify-center gap-2 transition-all rounded-sm shadow-sm active:scale-[0.98] disabled:opacity-40"
                 >
                   {updateLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                  <span>SAVE_CHANGES</span>
+                  <span>Save Changes</span>
                 </button>
               </form>
             </div>
@@ -478,8 +488,9 @@ main();`
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-orange-200">
-                    <p className="text-[11px] font-sans text-orange-950 leading-tight">
-                      ⚠️ Once you click <strong>&quot;Done &amp; Encrypt Key&quot;</strong>, the plaintext key is permanently locked and only its SHA-256 hash is preserved.
+                    <p className="text-[11px] font-sans text-orange-950 leading-tight flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                      <span>Once you click <strong>&quot;Done &amp; Encrypt Key&quot;</strong>, the plaintext key is permanently locked and only its SHA-256 hash is preserved.</span>
                     </p>
                     <button
                       type="button"
@@ -487,7 +498,7 @@ main();`
                         setNewKeyGenerated(null);
                         setCopiedKey(false);
                       }}
-                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-mono text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
+                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-sans text-xs font-semibold uppercase tracking-wide transition-all flex items-center gap-1.5 shrink-0 shadow-sm rounded-sm active:scale-[0.98]"
                     >
                       <Lock className="w-3.5 h-3.5" />
                       <span>Done &amp; Encrypt Key</span>
@@ -565,7 +576,7 @@ main();`
                 <button
                   type="submit"
                   disabled={keyLoading || !keyName.trim()}
-                  className="bg-black text-white hover:bg-[#FF4500] px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-40"
+                  className="bg-black text-white hover:bg-[#FF4500] px-5 py-2 font-sans text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 transition-all disabled:opacity-40 rounded-sm active:scale-[0.98]"
                 >
                   {keyLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                   <span>Generate Key</span>
@@ -607,28 +618,41 @@ main();`
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-mono uppercase font-bold text-black/70 mb-1">
-                    TARGET MODEL
+                  <label className="block text-[10px] font-mono uppercase font-bold text-black/70 mb-1 flex items-center justify-between">
+                    <span>LICENSED TARGET MODEL</span>
+                    <span className="text-emerald-700 font-bold text-[9px]">PURCHASED MODELS ONLY</span>
                   </label>
-                  <select
-                    value={testModel}
-                    onChange={(e) => setTestModel(e.target.value)}
-                    className="w-full px-3 py-2 border border-black/20 bg-white font-mono text-xs font-bold text-black focus:border-black outline-none"
-                  >
-                    <optgroup label="── Groq & Cloud Fast Inference ──">
-                      <option value="llama-3.3-70b-versatile">LLaMA 3.3 70B Versatile (Groq)</option>
-                      <option value="llama-3.1-8b-instant">LLaMA 3.1 8B Instant (Groq)</option>
-                      <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 Distill 70B</option>
-                      <option value="mixtral-8x7b-32768">Mixtral 8x7B 32k</option>
-                    </optgroup>
-                    <optgroup label="── Hugging Face & Open-Weight ──">
-                      <option value="llama3-8b-instruct">Meta Llama 3 8B Instruct</option>
-                      <option value="deepseek-coder-67b-instruct">DeepSeek Coder 6.7B</option>
-                      <option value="mistral-7b-instruct">Mistral 7B Instruct</option>
-                      <option value="biomedlm-2-7b">BioMistral 7B Healthcare</option>
-                      <option value="fingpt-forecaster-llama2">FinGPT Forecaster Finance</option>
-                    </optgroup>
-                  </select>
+                  {profileData?.purchased_models && profileData.purchased_models.length > 0 ? (
+                    <select
+                      value={testModel}
+                      onChange={(e) => setTestModel(e.target.value)}
+                      className="w-full px-3 py-2 border border-black/20 bg-white font-sans text-xs font-semibold text-black focus:border-black outline-none"
+                    >
+                      {profileData.purchased_models.map((pm: any) => {
+                        const matchedModel = modelsList.find((m) => m.id === pm.model_id);
+                        const rate = matchedModel?.price_per_1k || 1.20;
+                        return (
+                          <option key={pm.id} value={pm.model_id}>
+                            {pm.model_name || pm.model_id} — {rate} CR / 1k tokens
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 font-sans text-[11px]">
+                        <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>No models licensed yet.</span>
+                      </div>
+                      <Link
+                        href="/"
+                        className="px-2 py-1 bg-black text-white hover:bg-[#FF4500] font-sans text-[10px] font-semibold uppercase tracking-wider transition-colors rounded-sm flex items-center gap-1"
+                      >
+                        <ShoppingBag className="w-3 h-3" />
+                        <span>Unlock Models</span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -647,8 +671,8 @@ main();`
               <button
                 type="button"
                 onClick={handleTestApiKey}
-                disabled={testingKey}
-                className="w-full py-3 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                disabled={testingKey || !testModel}
+                className="w-full py-3.5 bg-black text-white hover:bg-[#FF4500] font-sans text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 rounded-sm shadow-sm active:scale-[0.98] disabled:opacity-40"
               >
                 {testingKey ? (
                   <>
@@ -716,7 +740,7 @@ main();`
                       <button
                         key={tab}
                         onClick={() => setActiveSnippetTab(tab)}
-                        className={`px-2.5 py-1 font-mono text-[9px] font-bold uppercase transition-all ${
+                        className={`px-3 py-1 font-sans text-[10px] font-bold uppercase transition-all rounded-sm ${
                           activeSnippetTab === tab
                             ? "bg-black text-white"
                             : "bg-white border border-black/10 text-black/50 hover:text-black"
@@ -727,7 +751,7 @@ main();`
                     ))}
                     <button
                       onClick={handleCopySnippet}
-                      className="ml-2 px-2.5 py-1 bg-black text-white hover:bg-[#FF4500] font-mono text-[9px] font-bold uppercase flex items-center gap-1 transition-colors"
+                      className="ml-2 px-3 py-1 bg-black text-white hover:bg-[#FF4500] font-sans text-[10px] font-bold uppercase flex items-center gap-1 transition-all rounded-sm active:scale-[0.98]"
                     >
                       {snippetCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
                       <span>{snippetCopied ? "Copied" : "Copy"}</span>

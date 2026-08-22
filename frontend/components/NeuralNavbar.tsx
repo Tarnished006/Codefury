@@ -114,7 +114,7 @@ export default function NeuralNavbar() {
             <div className="flex items-center gap-2 pl-1 border-l border-black/10">
               <Link
                 href="/login"
-                className="px-4 py-1.5 bg-black text-white text-[10px] font-mono font-bold uppercase tracking-widest hover:bg-[#FF4500] transition-colors"
+                className="px-4 py-2 bg-black text-white text-xs font-sans font-semibold uppercase tracking-wide hover:bg-[#FF4500] transition-all rounded-sm shadow-sm active:scale-[0.98]"
               >
                 Sign In
               </Link>
@@ -123,7 +123,7 @@ export default function NeuralNavbar() {
 
           <Link
             href="/deployments"
-            className="flex items-center gap-1.5 bg-black text-white px-4 py-2 border border-black hover:bg-[#FF4500] hover:border-[#FF4500] text-[10px] font-mono font-bold uppercase tracking-widest transition-all duration-300 group"
+            className="flex items-center gap-1.5 bg-black text-white px-4 py-2 border border-black hover:bg-[#FF4500] hover:border-[#FF4500] text-xs font-sans font-semibold uppercase tracking-wide transition-all shadow-sm rounded-sm active:scale-[0.98]"
           >
             <Code2 className="w-3.5 h-3.5" />
             <span>Deploy</span>

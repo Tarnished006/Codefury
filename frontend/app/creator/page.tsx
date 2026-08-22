@@ -61,7 +61,7 @@ export default function CreatorPage() {
   const [description, setDescription] = useState("");
   const [contextLength, setContextLength] = useState(8192);
   const [parameters, setParameters] = useState("8B");
-  const [pricePer1k, setPricePer1k] = useState(0.12);
+  const [pricePer1k, setPricePer1k] = useState(1.25);
   const [purchasePrice, setPurchasePrice] = useState(100.0);
   const [pubLoading, setPubLoading] = useState(false);
   const [pubSuccess, setPubSuccess] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export default function CreatorPage() {
   const [editTaskTag, setEditTaskTag] = useState("");
   const [editContextLength, setEditContextLength] = useState(8192);
   const [editParameters, setEditParameters] = useState("8B");
-  const [editPricePer1k, setEditPricePer1k] = useState(0.12);
+  const [editPricePer1k, setEditPricePer1k] = useState(1.25);
   const [editPurchasePrice, setEditPurchasePrice] = useState(100.0);
   const [editIsOnline, setEditIsOnline] = useState(true);
   const [editLoading, setEditLoading] = useState(false);
@@ -545,15 +545,15 @@ export default function CreatorPage() {
                   <button
                     type="submit"
                     disabled={pubLoading}
-                    className="btn-solid-black w-full py-3 text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+                    className="btn-solid-black w-full py-3.5 text-xs font-sans font-semibold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm shadow-sm active:scale-[0.98]"
                   >
                     {pubLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>PUBLISHING_TO_REGISTRY...</span>
+                        <span>Publishing to Marketplace...</span>
                       </>
                     ) : (
-                      <span>PUBLISH MODEL TO MARKETPLACE</span>
+                      <span>Publish Model to Marketplace</span>
                     )}
                   </button>
                 </form>
@@ -640,15 +640,15 @@ export default function CreatorPage() {
                     <button
                       type="submit"
                       disabled={payoutLoading}
-                      className="btn-solid-black w-full py-3 text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+                      className="btn-solid-black w-full py-3.5 text-xs font-sans font-semibold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm shadow-sm active:scale-[0.98]"
                     >
                       {payoutLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>PROCESSING_PAYOUT...</span>
+                          <span>Processing Payout...</span>
                         </>
                       ) : (
-                        <span>EXECUTE PAYOUT WITHDRAWAL</span>
+                        <span>Execute Payout Withdrawal</span>
                       )}
                     </button>
                   </form>

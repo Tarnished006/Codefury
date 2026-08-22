@@ -220,9 +220,9 @@ export default function DeploymentsPage() {
                 </div>
                 <button
                   onClick={handleCopyMcpConfig}
-                  className="px-3 py-1 bg-black text-white hover:bg-[#FF4500] font-mono text-[10px] font-bold uppercase flex items-center gap-1.5 transition-colors shadow-sm"
+                  className="px-3.5 py-1.5 bg-black text-white hover:bg-[#FF4500] font-sans text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 transition-all shadow-sm rounded-sm active:scale-[0.98]"
                 >
-                  {mcpConfigCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
+                  {mcpConfigCopied ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{mcpConfigCopied ? "Copied to Clipboard" : "Copy JSON Config"}</span>
                 </button>
               </div>

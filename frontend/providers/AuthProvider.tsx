@@ -164,7 +164,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        return { success: false, error: errData.detail || "Invalid email or password." };
+        let errorMsg = "Invalid email or password.";
+        if (typeof errData.detail === "string") {
+          errorMsg = errData.detail;
+        } else if (Array.isArray(errData.detail)) {
+          errorMsg = errData.detail.map((d: any) => d.msg || JSON.stringify(d)).join("; ");
+        } else if (errData.detail) {
+          errorMsg = JSON.stringify(errData.detail);
+        }
+        return { success: false, error: errorMsg };
       }
       const data = await res.json();
       setToken(data.access_token);
@@ -196,7 +204,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        return { success: false, error: errData.detail || "Registration failed." };
+        let errorMsg = "Registration failed.";
+        if (typeof errData.detail === "string") {
+          errorMsg = errData.detail;
+        } else if (Array.isArray(errData.detail)) {
+          errorMsg = errData.detail.map((d: any) => d.msg || JSON.stringify(d)).join("; ");
+        } else if (errData.detail) {
+          errorMsg = JSON.stringify(errData.detail);
+        }
+        return { success: false, error: errorMsg };
       }
       const data = await res.json();
       setToken(data.access_token);

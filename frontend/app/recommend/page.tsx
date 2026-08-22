@@ -341,7 +341,7 @@ export default function RecommenderPage() {
             <button
               onClick={handleRecommend}
               disabled={loading || !useCase.trim()}
-              className="w-full py-3.5 bg-black hover:bg-[#FF4500] text-white font-mono text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+              className="w-full py-4 bg-black hover:bg-[#FF4500] text-white font-sans text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md rounded-sm active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
                 <>

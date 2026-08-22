@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   GitCompare, Play, Zap, Award, Layers,
   RefreshCw, ChevronDown, Search, CheckCircle2, Loader2,
-  Activity, ArrowRight
+  Activity, ArrowRight, Trophy
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
@@ -267,7 +267,14 @@ export default function ArenaPage() {
       <div className="flex-1 p-5 min-h-[260px] text-xs font-mono leading-relaxed text-black whitespace-pre-wrap overflow-y-auto">
         {stream || (
           <span className="text-black/30">
-            {streaming ? "⏳ Waiting for initial token..." : "Click 'Stream Benchmark' to start."}
+            {streaming ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-black/40" />
+                <span>Waiting for initial token...</span>
+              </span>
+            ) : (
+              "Click 'Stream Benchmark' to start."
+            )}
           </span>
         )}
         {streaming && stream && (
@@ -286,14 +293,14 @@ export default function ArenaPage() {
         <button
           onClick={() => handleVote(modelId)}
           disabled={streaming || (!streamA && !streamB && !streamC)}
-          className={`px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 disabled:opacity-30 ${
+          className={`px-3 py-1.5 text-[10px] font-sans font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 rounded-sm disabled:opacity-30 ${
             votedWinner === modelId
               ? "bg-[#FF4500] text-white"
               : "bg-white border border-black/15 text-black hover:border-black hover:bg-black hover:text-white"
           }`}
         >
-          <Award className="w-3 h-3" />
-          {votedWinner === modelId ? "🏆 Winner" : "Vote"}
+          {votedWinner === modelId ? <Trophy className="w-3.5 h-3.5" /> : <Award className="w-3.5 h-3.5" />}
+          <span>{votedWinner === modelId ? "Winner" : "Vote"}</span>
         </button>
       </div>
     </div>
@@ -448,10 +455,11 @@ export default function ArenaPage() {
               ))}
             </div>
             {votedWinner && (
-              <div className="mt-5 pt-4 border-t border-black/10 text-xs font-mono">
+              <div className="mt-5 pt-4 border-t border-black/10 text-xs font-mono flex items-center gap-1.5">
                 <span className="text-black/50">Voted Winner: </span>
-                <strong className="text-[#FF4500]">
-                  {models.find(m => m.id === votedWinner)?.name || votedWinner} 🏆
+                <strong className="text-[#FF4500] flex items-center gap-1">
+                  <span>{models.find(m => m.id === votedWinner)?.name || votedWinner}</span>
+                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
                 </strong>
               </div>
             )}
