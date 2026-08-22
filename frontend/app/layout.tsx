@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
@@ -19,17 +18,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://agenthub.ai"),
-  title: "AgentHub — The Global Standard for Autonomous Intelligence",
+  title: "AgentNet — The Global Standard for Autonomous Intelligence",
   description:
     "Deploy, benchmark, and scale open-weight Hugging Face models across high-throughput GPU clusters with autonomous Meta-Agent routing and OWASP security audits.",
-  keywords: ["AgentHub", "AI marketplace", "Hugging Face", "LLM deployment", "Meta-Agent", "OWASP AI security"],
-  authors: [{ name: "AgentHub Engineering Team" }],
-  creator: "AgentHub",
+  keywords: ["AgentNet", "AgentHub", "AI marketplace", "Hugging Face", "LLM deployment", "Meta-Agent", "OWASP AI security", "MCP"],
+  authors: [{ name: "AgentNet Engineering Team" }],
+  creator: "AgentNet",
   openGraph: {
-    title: "AgentHub — The Global Standard for Autonomous Intelligence",
+    title: "AgentNet — The Global Standard for Autonomous Intelligence",
     description: "Deploy, benchmark, and scale open-weight Hugging Face models across high-throughput GPU clusters.",
     url: "https://agenthub.ai",
-    siteName: "AgentHub",
+    siteName: "AgentNet",
     type: "website",
   },
   robots: { index: true, follow: true },
@@ -44,7 +43,6 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
-        {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
   );

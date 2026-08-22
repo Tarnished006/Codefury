@@ -1,9 +1,12 @@
 import asyncio
 import datetime
 import hashlib
+import os
+import subprocess
 import sys
-import uuid
+import tempfile
 import time
+import uuid
 from pathlib import Path
 from fastapi import APIRouter
 from app.schemas import ExecuteSnippetRequest, ExecuteSnippetResponse, CreateApiKeyRequest, ApiKeyResponse
@@ -22,7 +25,7 @@ ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 @router.post("/sandbox/execute", response_model=ExecuteSnippetResponse)
 async def execute_code_snippet(req: ExecuteSnippetRequest):
     """
-    Live Python/Node.js code execution via asyncio.create_subprocess_exec.
+    Live Python/Node.js code execution via sandboxed subprocess runner.
     - Writes payload to an isolated temp file in backend/temp_sandbox/{session_id}.py
     - Executes with a hard 5-second timeout; kills process on expiry.
     - Returns real stdout/stderr, exit_code, session_id, and execution latency.
@@ -35,52 +38,32 @@ async def execute_code_snippet(req: ExecuteSnippetRequest):
     # Write submitted code to isolated ephemeral file
     temp_file.write_text(req.code, encoding="utf-8")
 
-    stdout_text = ""
-    stderr_text = ""
-    exit_code   = 0
+    cmd = [sys.executable, str(temp_file)] if req.language == "python" else ["node", str(temp_file)]
 
-    try:
-        if req.language == "python":
-            cmd = [sys.executable, str(temp_file)]
-        else:
-            cmd = ["node", str(temp_file)]
-
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-
+    def _run_subprocess():
         try:
-            raw_stdout, raw_stderr = await asyncio.wait_for(
-                proc.communicate(),
+            res = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
                 timeout=5.0
             )
-            stdout_text = raw_stdout.decode("utf-8", errors="replace")
-            stderr_text = raw_stderr.decode("utf-8", errors="replace")
-            exit_code   = proc.returncode if proc.returncode is not None else 0
+            return res.stdout, res.stderr, res.returncode
+        except subprocess.TimeoutExpired:
+            return "", "[Execution Timeout]: Script exceeded the 5-second resource limit and was terminated.", -1
+        except Exception as e:
+            return "", f"[Subprocess Launch Error]: {type(e).__name__}: {str(e)}", -2
+        finally:
+            try:
+                if temp_file.exists():
+                    temp_file.unlink()
+            except Exception:
+                pass
 
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.communicate()   # drain pipes after kill
-            stderr_text = "[Execution Timeout]: Script exceeded the 5-second resource limit and was terminated."
-            exit_code   = -1
-
-    except Exception as e:
-        stderr_text = f"[Subprocess Launch Error]: {type(e).__name__}: {str(e)}"
-        exit_code   = -2
-
-    finally:
-        # Clean up ephemeral script file
-        try:
-            if temp_file.exists():
-                temp_file.unlink()
-        except Exception:
-            pass
-
+    stdout_text, stderr_text, exit_code = await asyncio.to_thread(_run_subprocess)
     duration_ms = max(1, int((time.monotonic() - start_time) * 1000))
 
-    # Build human-readable terminal output (mimics VS Code terminal)
+    # Build human-readable terminal output
     lines = [
         f"╔══ AgentHub Execution Sandbox [{req.language.upper()}] ══╗",
         f"║ Session:   {session_id}",
