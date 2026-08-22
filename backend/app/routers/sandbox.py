@@ -8,7 +8,14 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from fastapi import APIRouter
+from typing import Optional
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
+from app.database import get_db
+from app.dependencies import get_current_user, get_optional_user
+from app.models import ApiKey, TestedModel, User
 from app.schemas import ExecuteSnippetRequest, ExecuteSnippetResponse, CreateApiKeyRequest, ApiKeyResponse
 
 router = APIRouter(tags=["Sandbox & Deployment Canvas"])
@@ -23,7 +30,11 @@ ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.post("/sandbox/execute", response_model=ExecuteSnippetResponse)
-async def execute_code_snippet(req: ExecuteSnippetRequest):
+async def execute_code_snippet(
+    req: ExecuteSnippetRequest,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Live Python/Node.js code execution via sandboxed subprocess runner.
     - Writes payload to an isolated temp file in backend/temp_sandbox/{session_id}.py
@@ -82,6 +93,24 @@ async def execute_code_snippet(req: ExecuteSnippetRequest):
 
     final_output = "\n".join(lines)
 
+    # Automatically register model as tested by user
+    if current_user and req.model_id:
+        tst_res = await db.execute(
+            select(TestedModel).filter(
+                TestedModel.user_id == current_user.id,
+                TestedModel.model_id == req.model_id
+            )
+        )
+        if not tst_res.scalars().first():
+            tst = TestedModel(
+                id=f"tst_{uuid.uuid4().hex[:10]}",
+                user_id=current_user.id,
+                model_id=req.model_id,
+                test_details=f"Sandbox code execution snippet ({req.language})"
+            )
+            db.add(tst)
+            await db.commit()
+
     return ExecuteSnippetResponse(
         status="SUCCESS" if exit_code == 0 else ("TIMEOUT" if exit_code == -1 else "ERROR"),
         output=final_output,
@@ -94,12 +123,31 @@ async def execute_code_snippet(req: ExecuteSnippetRequest):
 
 
 @router.post("/keys", response_model=ApiKeyResponse)
-async def generate_api_key(req: CreateApiKeyRequest):
-    """Provisions a scoped production API key for live GPU cluster deployments."""
+async def generate_api_key(
+    req: CreateApiKeyRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Provisions a scoped production API key for live GPU cluster deployments and stores in DB."""
     raw_key = f"ak_live_{uuid.uuid4().hex[:24]}"
-    return ApiKeyResponse(
+    key_prefix = raw_key[8:16]
+    hashed = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+
+    new_key = ApiKey(
         id=f"key_{uuid.uuid4().hex[:8]}",
+        user_id=current_user.id,
         name=req.name,
+        key_prefix=key_prefix,
+        hashed_key=hashed,
+        is_active=True
+    )
+    db.add(new_key)
+    await db.commit()
+    await db.refresh(new_key)
+
+    return ApiKeyResponse(
+        id=new_key.id,
+        name=new_key.name,
         api_key=raw_key,
-        created_at=datetime.datetime.utcnow()
+        created_at=new_key.created_at
     )
