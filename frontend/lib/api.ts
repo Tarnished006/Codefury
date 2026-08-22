@@ -83,12 +83,15 @@ export async function executeSandboxSnippet(language: string, code: string, mode
 }
 
 export async function generateApiKey(name: string = "Production Key") {
-  const res = await fetch(`${API_BASE_URL}/keys`, {
+  const res = await fetch(`${API_BASE_URL}/auth/api-keys`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ name })
   });
-  if (!res.ok) throw new Error("API key generation failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "API key generation failed" }));
+    throw new Error(err.detail || "API key generation failed");
+  }
   return res.json();
 }
 

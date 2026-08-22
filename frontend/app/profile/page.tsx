@@ -304,18 +304,18 @@ export default function ProfilePage() {
               </div>
 
               {newKeyGenerated && (
-                <div className="p-4 bg-orange-50/80 border border-orange-300 font-mono text-[11px] text-orange-950 space-y-2.5 animate-in fade-in">
+                <div className="p-5 bg-orange-50/90 border-2 border-orange-400 font-mono text-[11px] text-orange-950 space-y-3 animate-in fade-in">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold flex items-center gap-1.5 text-orange-800 uppercase tracking-wider text-[10px]">
+                    <span className="font-bold flex items-center gap-1.5 text-orange-900 uppercase tracking-wider text-xs">
                       <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-                      New API Key Generated — Copy & Save Now
+                      New API Key Generated — Copy Now
                     </span>
-                    <span className="text-[9px] text-orange-600 uppercase font-semibold">
-                      Revealed Only Once
+                    <span className="px-2 py-0.5 bg-orange-200 text-orange-900 text-[9px] font-bold uppercase tracking-wider">
+                      One-Time Reveal
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-white p-2.5 border border-orange-300">
+                  <div className="flex items-center gap-2 bg-white p-3 border border-orange-300 shadow-sm">
                     <code className="font-mono text-xs font-bold text-black flex-1 break-all select-all">
                       {showNewKey ? newKeyGenerated : "•".repeat(36) + newKeyGenerated.slice(-4)}
                     </code>
@@ -334,16 +334,29 @@ export default function ProfilePage() {
                         setCopiedKey(true);
                         setTimeout(() => setCopiedKey(false), 2500);
                       }}
-                      className="px-3 py-1.5 bg-black text-white hover:bg-[#FF4500] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors shrink-0"
+                      className="px-3.5 py-2 bg-black text-white hover:bg-[#FF4500] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors shrink-0"
                     >
                       {copiedKey ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedKey ? "Copied!" : "Copy Key"}</span>
                     </button>
                   </div>
 
-                  <p className="text-[9px] text-orange-700 leading-relaxed font-sans">
-                    Use this key in Python SDK (<code className="bg-orange-100/70 px-1 py-0.5 font-mono text-[9px]">agenthub.Client(api_key=&quot;...&quot;)</code>) or cURL headers (<code className="bg-orange-100/70 px-1 py-0.5 font-mono text-[9px]">Authorization: Bearer ak_live_...</code>) to authenticate model requests directly against the mesh.
-                  </p>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-1">
+                    <p className="text-[10px] text-orange-800 leading-relaxed font-sans max-w-md">
+                      ⚠️ Once you click <strong>&quot;Done &amp; Encrypt Key&quot;</strong>, the plaintext key is permanently locked and only its SHA-256 hash is preserved. It can never be viewed or copied again.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewKeyGenerated(null);
+                        setCopiedKey(false);
+                      }}
+                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-mono text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Done &amp; Encrypt Key</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -354,8 +367,7 @@ export default function ProfilePage() {
                   </p>
                 ) : (
                   profileData?.api_keys.map((k: any) => {
-                    const maskedPrefix = k.key_prefix || k.api_key || "ak_live_••••";
-                    const isRowCopied = copiedRowId === k.id;
+                    const maskedPrefix = k.key_prefix || (k.api_key ? k.api_key.slice(0, 12) : "ak_live_••••");
 
                     return (
                       <div
@@ -368,9 +380,13 @@ export default function ProfilePage() {
                             <span className="px-1.5 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-bold">
                               ACTIVE
                             </span>
+                            <span className="px-1.5 py-0.2 bg-zinc-100 text-zinc-600 border border-zinc-200 text-[8px] font-mono flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>ENCRYPTED (SHA-256)</span>
+                            </span>
                           </div>
                           <p className="text-[10px] text-black/60 font-mono tracking-wider">
-                            {maskedPrefix.length <= 12 ? `${maskedPrefix}••••••••••••••••` : `${maskedPrefix.slice(0, 10)}••••••••${maskedPrefix.slice(-4)}`}
+                            {maskedPrefix.slice(0, 12)}••••••••••••••••
                           </p>
                         </div>
 
@@ -378,18 +394,13 @@ export default function ProfilePage() {
                           <span className="text-[9px] text-black/40">
                             {new Date(k.created_at).toLocaleDateString()}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(k.api_key || maskedPrefix);
-                              setCopiedRowId(k.id);
-                              setTimeout(() => setCopiedRowId(null), 2000);
-                            }}
-                            className="px-2.5 py-1 border border-black/20 hover:border-black bg-white text-black font-bold uppercase text-[9px] flex items-center gap-1 transition-colors"
+                          <span
+                            title="For security, raw keys are encrypted on creation and cannot be revealed or copied."
+                            className="px-2.5 py-1 bg-zinc-100 text-zinc-500 border border-zinc-200 text-[9px] font-mono font-bold uppercase select-none flex items-center gap-1 cursor-help"
                           >
-                            {isRowCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
-                            <span>{isRowCopied ? "Copied" : "Copy"}</span>
-                          </button>
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>LOCKED</span>
+                          </span>
                         </div>
                       </div>
                     );

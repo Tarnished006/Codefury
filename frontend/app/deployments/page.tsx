@@ -27,6 +27,7 @@ import {
   Boxes,
   Cpu,
   RefreshCw,
+  ArrowRight,
   Sliders
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
@@ -125,7 +126,7 @@ const MCP_TOOLS = [
 ];
 
 export default function DeploymentsPage() {
-  const [activeTab, setActiveTab]         = useState<"registry" | "mcp" | "sandbox">("registry");
+  const [activeTab, setActiveTab]         = useState<"mcp" | "sandbox" | "proxy">("mcp");
   const [language, setLanguage]           = useState<"python" | "curl" | "javascript">("python");
   const [selectedModel, setSelectedModel] = useState("llama3-8b-instruct");
   const [copied, setCopied]               = useState(false);
@@ -138,17 +139,6 @@ export default function DeploymentsPage() {
   const [executing, setExecuting]         = useState(false);
   const [terminalOutput, setTerminalOutput] = useState<string | null>(null);
   const [execMetrics, setExecMetrics]     = useState<any>(null);
-
-  // ── API Registry State ───────────────────────────────────────────────────────
-  const [regModelName, setRegModelName]   = useState("Meta Llama 3 8B Instruct");
-  const [regDomain, setRegDomain]         = useState("LLM CHAT");
-  const [regEndpoint, setRegEndpoint]     = useState("https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct");
-  const [regSecret, setRegSecret]         = useState("");
-  const [regPrice, setRegPrice]           = useState(0.08);
-  const [regContext, setRegContext]       = useState(8192);
-  const [deployingEp, setDeployingEp]     = useState(false);
-  const [deployResult, setDeployResult]   = useState<any>(null);
-  const [deployError, setDeployError]     = useState<string | null>(null);
 
   // Registered Endpoints List State
   const [registeredList, setRegisteredList] = useState<any[]>([]);
@@ -207,8 +197,12 @@ export default function DeploymentsPage() {
     const config = JSON.stringify({
       mcpServers: {
         agenthub: {
-          command: "python",
-          args: ["backend/mcp_server.py", "--transport", "stdio"]
+          command: "C:\\Users\\Tharun R Gowda\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+          args: [
+            "C:\\Users\\Tharun R Gowda\\Desktop\\codefury\\backend\\mcp_server.py",
+            "--transport",
+            "stdio"
+          ]
         }
       }
     }, null, 2);
@@ -232,45 +226,9 @@ export default function DeploymentsPage() {
     }
   };
 
-  const handleDeployEndpoint = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setDeployingEp(true);
-    setDeployResult(null);
-    setDeployError(null);
-
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/registry/deploy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          developer_id: "usr_guest_demo",
-          model_name: regModelName,
-          domain: regDomain,
-          api_endpoint: regEndpoint,
-          api_key_env_or_secret: regSecret || null,
-          price_per_1k_tokens: regPrice,
-          context_length: regContext,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || `Server returned HTTP ${res.status}`);
-      }
-
-      setDeployResult(data);
-      setSelectedEndpointId(data.id);
-      await loadRegisteredEndpoints();
-    } catch (err: any) {
-      setDeployError(err.message || "Failed to register endpoint.");
-    } finally {
-      setDeployingEp(false);
-    }
-  };
-
   const handleTestProxy = async () => {
     if (!testPrompt.trim()) return;
-    const epId = selectedEndpointId || deployResult?.id || "llama3-8b-instruct";
+    const epId = selectedEndpointId || "llama3-8b-instruct";
     setTestingProxy(true);
     setProxyOutput(null);
     setProxyError(null);
@@ -312,45 +270,40 @@ export default function DeploymentsPage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-2 py-0.5 bg-black text-white font-mono text-[10px] font-bold uppercase tracking-widest">
-                API_REGISTRY_&_MCP_HUB
+                DEVELOPER_INFRASTRUCTURE_&_MCP_HUB
               </span>
               <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">
-                // Intelligent Model Gateway & Developer Infrastructure
+                // Model Context Protocol, SDK Canvas & Live Gateway
               </span>
             </div>
             <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
-              api registry & deployments.
+              deployments & mcp hub.
             </h1>
             <p className="text-xs text-black/60 mt-1 font-mono uppercase max-w-2xl">
-              AgentHub acts as an intelligent routing gateway, telemetry tracker, and metering layer rather than a monolithic GPU host.
+              Connect autonomous agents via MCP or execute code against the unified foundation model marketplace.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/creator"
+              className="px-4 py-2 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Publish Model in Creator Studio</span>
+            </Link>
             <Link
               href="/profile"
               className="px-4 py-2 border border-black/20 hover:border-black font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors flex items-center gap-1.5"
             >
               <Key className="w-3.5 h-3.5 text-[#FF4500]" />
-              <span>Manage API Keys in Profile</span>
+              <span>API Keys in Profile</span>
             </Link>
           </div>
         </div>
 
         {/* ── Primary Navigation Tabs ── */}
         <div className="flex items-center gap-2 mb-8 border-b border-black/15">
-          <button
-            onClick={() => setActiveTab("registry")}
-            className={`px-5 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
-              activeTab === "registry"
-                ? "border-black text-black bg-black/[0.02]"
-                : "border-transparent text-black/40 hover:text-black"
-            }`}
-          >
-            <Globe className="w-4 h-4 text-[#FF4500]" />
-            <span>1. API Registry Gateway & Proxy</span>
-          </button>
-
           <button
             onClick={() => setActiveTab("mcp")}
             className={`px-5 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
@@ -359,8 +312,8 @@ export default function DeploymentsPage() {
                 : "border-transparent text-black/40 hover:text-black"
             }`}
           >
-            <Server className="w-4 h-4 text-black" />
-            <span>2. Model Context Protocol (MCP) Server</span>
+            <Server className="w-4 h-4 text-[#FF4500]" />
+            <span>1. Model Context Protocol (MCP) Server</span>
           </button>
 
           <button
@@ -372,348 +325,23 @@ export default function DeploymentsPage() {
             }`}
           >
             <Code2 className="w-4 h-4 text-black" />
-            <span>3. Monaco SDK Code Canvas & Runner</span>
+            <span>2. Monaco SDK Code Canvas & Runner</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("proxy")}
+            className={`px-5 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
+              activeTab === "proxy"
+                ? "border-black text-black bg-black/[0.02]"
+                : "border-transparent text-black/40 hover:text-black"
+            }`}
+          >
+            <Globe className="w-4 h-4 text-black" />
+            <span>3. Live Gateway Proxy & Active Endpoints</span>
           </button>
         </div>
 
-        {/* ── TAB 1: API REGISTRY PATTERN GATEWAY ── */}
-        {activeTab === "registry" && (
-          <div className="space-y-8 animate-in fade-in duration-300 w-full">
-            {/* Top Grid: Registration & Live Proxy */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
-              {/* Left: Registration Form */}
-              <div className="w-full border border-black p-6 bg-white space-y-5">
-                <div className="border-b border-black/10 pb-3">
-                  <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Radio className="w-4 h-4 text-[#FF4500]" />
-                    <span>Register Verified Model Endpoint</span>
-                  </div>
-                  <p className="text-[11px] text-black/60 font-sans mt-1">
-                    Connect genuine Hugging Face Inference endpoints, custom cloud URLs (AWS/RunPod), or vLLM/Ollama servers.
-                    All links are strictly verified against provider health probes before registration.
-                  </p>
-                </div>
-
-                <form onSubmit={handleDeployEndpoint} className="space-y-4">
-                  <div>
-                    <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                      Model Display Name:
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={regModelName}
-                      onChange={(e) => setRegModelName(e.target.value)}
-                      placeholder="e.g. Meta Llama 3 8B Instruct"
-                      className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-sans text-xs text-black"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                        Domain:
-                      </label>
-                      <select
-                        value={regDomain}
-                        onChange={(e) => setRegDomain(e.target.value)}
-                        className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs font-bold text-black"
-                      >
-                        <option value="LLM CHAT">LLM CHAT</option>
-                        <option value="CODE GEN">CODE GEN</option>
-                        <option value="HEALTHCARE">HEALTHCARE</option>
-                        <option value="FINANCE">FINANCE</option>
-                        <option value="VISION AI">VISION AI</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                        Price / 1k Tokens (Credits):
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        required
-                        value={regPrice}
-                        onChange={(e) => setRegPrice(Number(e.target.value))}
-                        className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs font-bold text-black"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                      Hugging Face Repo or HTTPS Endpoint URL:
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={regEndpoint}
-                      onChange={(e) => setRegEndpoint(e.target.value)}
-                      placeholder="e.g. meta-llama/Meta-Llama-3-8B-Instruct or https://your-server.runpod.net/v1"
-                      className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs text-black"
-                    />
-                    <span className="font-mono text-[9px] text-black/40 mt-0.5 block">
-                      Must be an active, existing repository on huggingface.co or reachable HTTPS host.
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                      Secret API Key / HF Token (Optional):
-                    </label>
-                    <input
-                      type="password"
-                      value={regSecret}
-                      onChange={(e) => setRegSecret(e.target.value)}
-                      placeholder="hf_... or bearer secret for gated endpoints"
-                      className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs text-black"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                      Context Length (Tokens):
-                    </label>
-                    <input
-                      type="number"
-                      min="1024"
-                      value={regContext}
-                      onChange={(e) => setRegContext(Number(e.target.value))}
-                      className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs font-bold text-black"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={deployingEp}
-                    className="w-full py-3.5 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                  >
-                    {deployingEp ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Verifying Repository & Registering Gateway...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        <span>Verify & Register Endpoint</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                {deployError && (
-                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-mono flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{deployError}</span>
-                  </div>
-                )}
-
-                {deployResult && (
-                  <div className="p-4 bg-green-50 border border-green-200 text-green-800 text-xs font-mono space-y-2">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      <span>Model Verified & Endpoint Active! (ID: {deployResult.id})</span>
-                    </div>
-                    <div className="text-[11px] text-green-700">
-                      Gateway Route: <span className="font-bold">{deployResult.gateway_proxy_url}</span>
-                    </div>
-                    <div className="text-[10px] text-green-600 italic">
-                      {deployResult.architecture_note}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Live Proxy Test & Telemetry */}
-              <div className="w-full border border-black p-6 bg-black/[0.02] space-y-5">
-                <div className="border-b border-black/10 pb-3 flex items-center justify-between">
-                  <div>
-                    <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-[#FF4500]" />
-                      <span>Live Gateway Proxy Testing</span>
-                    </div>
-                    <p className="text-[11px] text-black/60 font-sans mt-0.5">
-                      Dispatch live prompts through AgentHub's intelligent gateway to measure real-time latency and token metering.
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                    Select Target Registered Endpoint:
-                  </label>
-                  <select
-                    value={selectedEndpointId}
-                    onChange={(e) => setSelectedEndpointId(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-black/20 focus:border-black font-mono text-xs font-bold text-black"
-                  >
-                    {registeredList.map((ep) => (
-                      <option key={ep.id} value={ep.id}>
-                        {ep.model_name} ({ep.id}) · {ep.domain} · ${ep.price_per_1k_tokens}/1k
-                      </option>
-                    ))}
-                    <option value="llama3-8b-instruct">Llama 3 8B Instruct (Mesh Default)</option>
-                    <option value="deepseek-coder-67b-instruct">DeepSeek Coder 67B (Mesh Default)</option>
-                    <option value="qwen25-coder-32b-instruct">Qwen 2.5 Coder 32B (Mesh Default)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                    Test Prompt:
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={testPrompt}
-                    onChange={(e) => setTestPrompt(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-black/20 focus:border-black font-sans text-xs text-black"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleTestProxy}
-                  disabled={testingProxy}
-                  className="w-full py-3 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                >
-                  {testingProxy ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Routing Request via Gateway...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>Execute Proxy Inference</span>
-                    </>
-                  )}
-                </button>
-
-                {proxyError && (
-                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-mono flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{proxyError}</span>
-                  </div>
-                )}
-
-                {/* Proxy Telemetry & Output */}
-                {proxyOutput && (
-                  <div className="space-y-3 animate-in fade-in duration-300">
-                    <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-                      <div className="p-2.5 bg-white border border-black/10">
-                        <div className="text-[9px] text-black/40 uppercase">Real Latency</div>
-                        <div className="font-bold text-black">{proxyOutput.latency_ms}ms</div>
-                      </div>
-                      <div className="p-2.5 bg-white border border-black/10">
-                        <div className="text-[9px] text-black/40 uppercase">Tokens Metered</div>
-                        <div className="font-bold text-black">{proxyOutput.tokens_metered}</div>
-                      </div>
-                      <div className="p-2.5 bg-white border border-black/10">
-                        <div className="text-[9px] text-black/40 uppercase">Settled Credits</div>
-                        <div className="font-bold text-black">{proxyOutput.cost_credits}</div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 bg-black text-white border border-black">
-                      <div className="font-mono text-[9px] text-[#FF4500] uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
-                        <span>Gateway Response ({proxyOutput.routing_mode}):</span>
-                        <span className="text-white/40">{proxyOutput.model_name}</span>
-                      </div>
-                      <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto">
-                        {proxyOutput.response}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-
-                {/* Gateway Architectural Guarantees */}
-                <div className="p-3.5 bg-white border border-black/15 text-xs font-sans text-black/80 space-y-1.5">
-                  <div className="font-mono text-[10px] font-bold text-black uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
-                    <span>AgentHub Gateway Guarantees</span>
-                  </div>
-                  <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-black/70">
-                    <li>Models remain hosted on your infrastructure (zero GPU migration overhead).</li>
-                    <li>Live real-time latency measurement replaces manual latency buttons.</li>
-                    <li>Automated 80% revenue royalty credit instantly distributed to creator wallets.</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Section: Active Registered Endpoints Table */}
-            <div className="border border-black p-6 bg-white space-y-4">
-              <div className="flex items-center justify-between border-b border-black/10 pb-3">
-                <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                  <Boxes className="w-4 h-4 text-black" />
-                  <span>Active Registered Endpoints in Gateway</span>
-                </div>
-                <button
-                  onClick={loadRegisteredEndpoints}
-                  className="text-[10px] font-mono text-black/60 hover:text-black flex items-center gap-1 uppercase"
-                >
-                  <RefreshCw className={`w-3 h-3 ${loadingList ? "animate-spin" : ""}`} />
-                  <span>Refresh</span>
-                </button>
-              </div>
-
-              {registeredList.length === 0 ? (
-                <div className="p-8 text-center text-xs font-mono text-black/40 bg-black/[0.01] border border-dashed border-black/15 uppercase">
-                  No custom external endpoints registered yet. Register your first model endpoint above!
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left font-mono text-xs border border-black/10">
-                    <thead className="bg-black text-white text-[10px] uppercase">
-                      <tr>
-                        <th className="p-2.5">Endpoint ID</th>
-                        <th className="p-2.5">Model Name</th>
-                        <th className="p-2.5">Domain</th>
-                        <th className="p-2.5">P50 Latency</th>
-                        <th className="p-2.5">Price / 1k</th>
-                        <th className="p-2.5">Status</th>
-                        <th className="p-2.5">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-black/10">
-                      {registeredList.map((ep) => (
-                        <tr key={ep.id} className="hover:bg-black/[0.02]">
-                          <td className="p-2.5 font-bold">{ep.id}</td>
-                          <td className="p-2.5 font-sans font-bold text-black">{ep.model_name}</td>
-                          <td className="p-2.5">{ep.domain}</td>
-                          <td className="p-2.5">{ep.p50_latency_ms}ms</td>
-                          <td className="p-2.5">${ep.price_per_1k_tokens}</td>
-                          <td className="p-2.5">
-                            <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[9px] font-bold">
-                              {ep.verification_status || "ONLINE"}
-                            </span>
-                          </td>
-                          <td className="p-2.5">
-                            <button
-                              onClick={() => {
-                                setSelectedEndpointId(ep.id);
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }}
-                              className="px-2.5 py-1 bg-black text-white hover:bg-[#FF4500] text-[9px] font-bold uppercase"
-                            >
-                              Test Proxy
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── TAB 2: MODEL CONTEXT PROTOCOL (MCP) SERVER HUB ── */}
+        {/* ── TAB 1: MODEL CONTEXT PROTOCOL (MCP) SERVER HUB ── */}
         {activeTab === "mcp" && (
           <div className="space-y-8 animate-in fade-in duration-300">
             {/* Top Cards: MCP Endpoints and Claude Config */}
@@ -760,8 +388,12 @@ export default function DeploymentsPage() {
 {`{
   "mcpServers": {
     "agenthub": {
-      "command": "python",
-      "args": ["backend/mcp_server.py", "--transport", "stdio"]
+      "command": "C:\\\\Users\\\\Tharun R Gowda\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe",
+      "args": [
+        "C:\\\\Users\\\\Tharun R Gowda\\\\Desktop\\\\codefury\\\\backend\\\\mcp_server.py",
+        "--transport",
+        "stdio"
+      ]
     }
   }
 }`}
@@ -804,7 +436,7 @@ export default function DeploymentsPage() {
           </div>
         )}
 
-        {/* ── TAB 3: MONACO SDK CODE CANVAS & RUNNER ── */}
+        {/* ── TAB 2: MONACO SDK CODE CANVAS & RUNNER ── */}
         {activeTab === "sandbox" && (
           <div className="space-y-6 animate-in fade-in duration-300">
             {/* Controls Strip */}
@@ -949,10 +581,218 @@ export default function DeploymentsPage() {
                   </div>
                 ) : (
                   <div className="p-12 text-center text-xs font-mono text-black/40 bg-black/[0.015] border border-dashed border-black/15 uppercase">
-                    Modify code in the editor and click "Run Snippet" to execute in the isolated sandbox.
+                    Modify code in the editor and click &quot;Run Snippet&quot; to execute with the embedded AgentHub SDK.
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB 3: LIVE GATEWAY PROXY & ACTIVE ENDPOINTS ── */}
+        {activeTab === "proxy" && (
+          <div className="space-y-8 animate-in fade-in duration-300 w-full">
+            {/* Creator Studio Navigation Banner */}
+            <div className="p-6 bg-black/[0.02] border border-black flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-[#FF4500]" />
+                  <span>Publish Models in Creator Studio</span>
+                </div>
+                <p className="text-xs text-black/70 font-sans max-w-2xl">
+                  Model registration and publishing is unified directly inside Creator Studio. Publish your verified Hugging Face repository or custom cloud endpoint to receive an automated 80% royalty revenue split on all token inferences.
+                </p>
+              </div>
+              <Link
+                href="/creator"
+                className="px-5 py-2.5 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors shrink-0 shadow-sm"
+              >
+                <span>Open Creator Studio</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* Live Gateway Proxy Tester */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
+              {/* Left: Test Controls */}
+              <div className="w-full border border-black p-6 bg-white space-y-5">
+                <div className="border-b border-black/10 pb-3">
+                  <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-[#FF4500]" />
+                    <span>Live Gateway Proxy Testing</span>
+                  </div>
+                  <p className="text-[11px] text-black/60 font-sans mt-0.5">
+                    Dispatch live prompts through AgentHub&apos;s intelligent gateway to measure real-time latency and token metering.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
+                    Select Target Registered Endpoint:
+                  </label>
+                  <select
+                    value={selectedEndpointId}
+                    onChange={(e) => setSelectedEndpointId(e.target.value)}
+                    className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs font-bold text-black"
+                  >
+                    {registeredList.map((ep) => (
+                      <option key={ep.id} value={ep.id}>
+                        {ep.model_name} ({ep.id}) · {ep.domain} · ${ep.price_per_1k_tokens}/1k
+                      </option>
+                    ))}
+                    <option value="llama3-8b-instruct">Llama 3 8B Instruct (Mesh Default)</option>
+                    <option value="deepseek-coder-67b-instruct">DeepSeek Coder 67B (Mesh Default)</option>
+                    <option value="qwen25-coder-32b-instruct">Qwen 2.5 Coder 32B (Mesh Default)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
+                    Test Prompt:
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={testPrompt}
+                    onChange={(e) => setTestPrompt(e.target.value)}
+                    className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-sans text-xs text-black"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleTestProxy}
+                  disabled={testingProxy}
+                  className="w-full py-3 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                >
+                  {testingProxy ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Routing Request via Gateway...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>Execute Proxy Inference</span>
+                    </>
+                  )}
+                </button>
+
+                {proxyError && (
+                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-mono flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{proxyError}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Telemetry & Results */}
+              <div className="w-full border border-black p-6 bg-black/[0.02] space-y-5">
+                <div className="border-b border-black/10 pb-3">
+                  <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+                    <span>Gateway Telemetry & Response</span>
+                  </div>
+                </div>
+
+                {proxyOutput ? (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
+                      <div className="p-2.5 bg-white border border-black/10">
+                        <div className="text-[9px] text-black/40 uppercase">Real Latency</div>
+                        <div className="font-bold text-black">{proxyOutput.latency_ms}ms</div>
+                      </div>
+                      <div className="p-2.5 bg-white border border-black/10">
+                        <div className="text-[9px] text-black/40 uppercase">Tokens Metered</div>
+                        <div className="font-bold text-black">{proxyOutput.tokens_metered}</div>
+                      </div>
+                      <div className="p-2.5 bg-white border border-black/10">
+                        <div className="text-[9px] text-black/40 uppercase">Settled Credits</div>
+                        <div className="font-bold text-black">{proxyOutput.cost_credits}</div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-black text-white border border-black">
+                      <div className="font-mono text-[9px] text-[#FF4500] uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+                        <span>Gateway Response ({proxyOutput.routing_mode}):</span>
+                        <span className="text-white/40">{proxyOutput.model_name}</span>
+                      </div>
+                      <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-[220px] overflow-y-auto">
+                        {proxyOutput.response}
+                      </pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-12 text-center text-xs font-mono text-black/40 bg-white border border-dashed border-black/15 uppercase">
+                    Select an endpoint on the left and click &quot;Execute Proxy Inference&quot; to inspect live round-trip telemetry.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Section: Active Registered Endpoints Table */}
+            <div className="border border-black p-6 bg-white space-y-4">
+              <div className="flex items-center justify-between border-b border-black/10 pb-3">
+                <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                  <Boxes className="w-4 h-4 text-black" />
+                  <span>Active Registered Endpoints in Gateway</span>
+                </div>
+                <button
+                  onClick={loadRegisteredEndpoints}
+                  className="text-[10px] font-mono text-black/60 hover:text-black flex items-center gap-1 uppercase"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loadingList ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              {registeredList.length === 0 ? (
+                <div className="p-8 text-center text-xs font-mono text-black/40 bg-black/[0.01] border border-dashed border-black/15 uppercase">
+                  No custom external endpoints registered yet. Publish your models in Creator Studio!
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left font-mono text-xs border border-black/10">
+                    <thead className="bg-black text-white text-[10px] uppercase">
+                      <tr>
+                        <th className="p-2.5">Endpoint ID</th>
+                        <th className="p-2.5">Model Name</th>
+                        <th className="p-2.5">Domain</th>
+                        <th className="p-2.5">P50 Latency</th>
+                        <th className="p-2.5">Price / 1k</th>
+                        <th className="p-2.5">Status</th>
+                        <th className="p-2.5">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/10">
+                      {registeredList.map((ep) => (
+                        <tr key={ep.id} className="hover:bg-black/[0.02]">
+                          <td className="p-2.5 font-bold">{ep.id}</td>
+                          <td className="p-2.5 font-sans font-bold text-black">{ep.model_name}</td>
+                          <td className="p-2.5">{ep.domain}</td>
+                          <td className="p-2.5">{ep.p50_latency_ms}ms</td>
+                          <td className="p-2.5">${ep.price_per_1k_tokens}</td>
+                          <td className="p-2.5">
+                            <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[9px] font-bold">
+                              {ep.verification_status || "ONLINE"}
+                            </span>
+                          </td>
+                          <td className="p-2.5">
+                            <button
+                              onClick={() => {
+                                setSelectedEndpointId(ep.id);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className="px-2.5 py-1 bg-black text-white hover:bg-[#FF4500] text-[9px] font-bold uppercase"
+                            >
+                              Test Proxy
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
