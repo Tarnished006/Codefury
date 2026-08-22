@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import AuthGuard from "@/components/AuthGuard";
+import AIChatbot from "@/components/AIChatbot";
 import { Suspense } from "react";
 
 const geistSans = Geist({
@@ -45,7 +46,10 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <Suspense fallback={null}>
-              <AuthGuard>{children}</AuthGuard>
+              <AuthGuard>
+                {children}
+                <AIChatbot />
+              </AuthGuard>
             </Suspense>
           </AuthProvider>
         </ThemeProvider>

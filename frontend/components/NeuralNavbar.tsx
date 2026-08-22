@@ -32,6 +32,7 @@ export default function NeuralNavbar() {
 
   const navLinks = [
     { href: "/", label: "MARKETPLACE" },
+    { href: "/recommend", label: "RECOMMENDER" },
     { href: "/orchestrator", label: "ORCHESTRATOR" },
     { href: "/arena", label: "ARENA" },
     { href: "/security", label: "SECURITY_RADAR" },
