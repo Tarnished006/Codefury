@@ -1010,34 +1010,40 @@ export default function CreatorPage() {
                   </div>
                 </div>
 
-                {/* Simulated Payout Request Sidecard */}
+                {/* Creator Ecosystem & Model Publishing Info Sidecard (No Withdrawal Controls for Non-Creators) */}
                 <div className="border border-black/10 bg-black/[0.02] p-8 space-y-6">
                   <div className="font-mono text-xs font-bold uppercase text-black/70 flex items-center gap-2">
-                    <Landmark className="w-4 h-4 text-black" />
-                    <span>PUBLIC_CREATOR_PAYOUT</span>
+                    <Shield className="w-4 h-4 text-[#FF4500]" />
+                    <span>CREATOR_MONETIZATION</span>
                   </div>
-                  <p className="font-mono text-xs text-black/60">
-                    Simulate creator payout processing via Stripe Connect or USDC.
+                  <p className="font-sans text-sm text-black/70 leading-relaxed">
+                    Verified creators earn an industry-leading <strong className="text-black font-semibold">80% revenue split</strong> on every metered inference call executed against their registered models.
                   </p>
 
-                  <form onSubmit={handleExecutePayout} className="space-y-4 font-mono text-xs">
-                    <div>
-                      <label className="block text-[10px] text-black/40 uppercase font-bold mb-1">AMOUNT_CREDITS</label>
-                      <input
-                        type="number"
-                        value={payoutAmount}
-                        onChange={(e) => setPayoutAmount(Number(e.target.value))}
-                        className="w-full px-3 py-2 border border-black/20 bg-white text-black outline-none"
-                      />
+                  <div className="border-t border-black/10 pt-4 space-y-3 font-mono text-xs text-black/60">
+                    <div className="flex items-center justify-between">
+                      <span>SETTLEMENT:</span>
+                      <strong className="text-black">Real-Time Ledger</strong>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span>PAYOUT CHANNELS:</span>
+                      <strong className="text-black">Stripe & USDC</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>MIN THRESHOLD:</span>
+                      <strong className="text-black">10.00 CR ($10.00)</strong>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
                     <button
-                      type="submit"
-                      disabled={payoutLoading}
-                      className="btn-solid-black w-full py-2.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2"
+                      onClick={handleConvertToCreator}
+                      disabled={convertLoading}
+                      className="btn-solid-black w-full py-3 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2"
                     >
-                      {payoutLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>TRIGGER PAYOUT</span>}
+                      {convertLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>BECOME A CREATOR</span>}
                     </button>
-                  </form>
+                  </div>
                 </div>
               </div>
             )}

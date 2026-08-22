@@ -20,6 +20,7 @@ import {
   Maximize2
 } from "lucide-react";
 import { useAuthContext } from "@/providers/AuthProvider";
+import { getApiBaseUrl } from "@/lib/api";
 
 interface SuggestedModel {
   id: string;
@@ -101,7 +102,7 @@ export default function AIChatbot() {
         content: m.content,
       }));
 
-      const res = await fetch("http://127.0.0.1:8000/api/assistant/chat", {
+      const res = await fetch(`${getApiBaseUrl()}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

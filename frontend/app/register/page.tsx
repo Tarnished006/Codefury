@@ -41,32 +41,32 @@ function RegisterForm() {
   };
 
   return (
-    <div className="border border-black/10 bg-white p-8">
+    <div className="border border-black/15 bg-white p-8 sm:p-10 shadow-sm rounded-lg">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <span className="font-sans font-extrabold text-xl tracking-tighter text-black">
+          <span className="font-sans font-extrabold text-2xl tracking-tighter text-black">
             agentnet
           </span>
         </div>
-        <ShieldCheck className="w-5 h-5 text-[#10B981]" />
+        <ShieldCheck className="w-6 h-6 text-[#10B981]" />
       </div>
 
-      <h1 className="font-sans font-extrabold text-2xl text-black tracking-tight mb-1">
+      <h1 className="font-sans font-extrabold text-3xl text-black tracking-tight mb-2">
         Create Account
       </h1>
-      <p className="font-mono text-xs text-black/50 uppercase mb-6">
+      <p className="font-mono text-xs text-black/60 uppercase mb-8">
         500 inference test credits provisioned automatically upon registration.
       </p>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-xs font-mono text-red-600 flex items-center gap-2">
+        <div className="mb-6 p-3.5 bg-red-50 border border-red-200 text-sm font-mono text-red-600 flex items-center gap-2 rounded">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* ── Social OAuth Handshake ── */}
-      <div className="mb-6">
+      <div className="mb-8">
         <OAuthButtons
           redirectUrl={redirectUrl}
           role={role}
@@ -78,23 +78,23 @@ function RegisterForm() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-black/10" />
           </div>
-          <span className="relative bg-white px-3 text-[10px] font-mono uppercase text-black/40 tracking-wider">
+          <span className="relative bg-white px-3.5 text-xs font-mono uppercase text-black/50 tracking-wider">
             OR REGISTER WITH EMAIL
           </span>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1.5">
+          <label className="block text-xs font-mono uppercase text-black/70 font-semibold mb-1.5">
             ACCOUNT_ROLE
           </label>
-          <div className="grid grid-cols-2 gap-2 p-1 bg-black/[0.03] border border-black/10 font-mono text-[10px]">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-black/[0.03] border border-black/15 font-mono text-xs rounded-md">
             <button
               type="button"
               onClick={() => setRole("developer")}
-              className={`py-2 text-center uppercase tracking-wider font-bold transition-all ${
-                role === "developer" ? "bg-black text-white" : "text-black/50 hover:text-black"
+              className={`py-2.5 text-center uppercase tracking-wider font-bold transition-all rounded ${
+                role === "developer" ? "bg-black text-white shadow-sm" : "text-black/60 hover:text-black"
               }`}
             >
               Developer / Consumer
@@ -102,8 +102,8 @@ function RegisterForm() {
             <button
               type="button"
               onClick={() => setRole("creator")}
-              className={`py-2 text-center uppercase tracking-wider font-bold transition-all ${
-                role === "creator" ? "bg-black text-white" : "text-black/50 hover:text-black"
+              className={`py-2.5 text-center uppercase tracking-wider font-bold transition-all rounded ${
+                role === "creator" ? "bg-black text-white shadow-sm" : "text-black/60 hover:text-black"
               }`}
             >
               Model Creator
@@ -111,7 +111,7 @@ function RegisterForm() {
           </div>
         </div>
         <div>
-          <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1.5">
+          <label className="block text-xs font-mono uppercase text-black/70 font-semibold mb-1.5">
             DEVELOPER_HANDLE
           </label>
           <input
@@ -119,13 +119,13 @@ function RegisterForm() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="developer_01"
-            className="w-full border border-black/15 bg-black/[0.015] p-3 text-xs font-mono text-black outline-none focus:border-black uppercase tracking-wider"
+            className="w-full border border-black/20 bg-black/[0.015] p-3 text-sm font-mono text-black outline-none focus:border-black tracking-wider rounded-md"
             required
           />
         </div>
 
         <div>
-          <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1.5">
+          <label className="block text-xs font-mono uppercase text-black/70 font-semibold mb-1.5">
             WORK_EMAIL
           </label>
           <input
@@ -133,13 +133,13 @@ function RegisterForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@company.com"
-            className="w-full border border-black/15 bg-black/[0.015] p-3 text-xs font-mono text-black outline-none focus:border-black tracking-wider"
+            className="w-full border border-black/20 bg-black/[0.015] p-3 text-sm font-mono text-black outline-none focus:border-black tracking-wider rounded-md"
             required
           />
         </div>
 
         <div>
-          <label className="block text-[10px] font-mono uppercase text-black/50 font-bold mb-1.5">
+          <label className="block text-xs font-mono uppercase text-black/70 font-semibold mb-1.5">
             PASSWORD
           </label>
           <input
@@ -147,7 +147,7 @@ function RegisterForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••••••"
-            className="w-full border border-black/15 bg-black/[0.015] p-3 text-xs font-mono text-black outline-none focus:border-black"
+            className="w-full border border-black/20 bg-black/[0.015] p-3 text-sm font-mono text-black outline-none focus:border-black rounded-md"
             required
           />
         </div>
@@ -155,7 +155,7 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full btn-solid-black gap-2 mt-6 py-3.5 text-[10px] disabled:opacity-40"
+          className="w-full btn-solid-black gap-2 mt-6 py-3.5 text-sm font-semibold rounded-md shadow-sm active:scale-[0.99] disabled:opacity-50"
         >
           <span>{loading ? "Creating Account..." : "Create Account (500 Credits)"}</span>
           <ArrowRight className="w-4 h-4" />

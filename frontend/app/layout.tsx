@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import AuthGuard from "@/components/AuthGuard";
@@ -28,19 +29,23 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className="font-sans antialiased bg-white text-black min-h-screen">
-        <ThemeProvider>
-          <AuthProvider>
-            <Suspense fallback={null}>
-              <AuthGuard>
-                {children}
-                <AIChatbot />
-              </AuthGuard>
-            </Suspense>
-          </AuthProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    >
+      <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+        <body className="font-sans antialiased bg-white text-black min-h-screen">
+          <ThemeProvider>
+            <AuthProvider>
+              <Suspense fallback={null}>
+                <AuthGuard>
+                  {children}
+                  <AIChatbot />
+                </AuthGuard>
+              </Suspense>
+            </AuthProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

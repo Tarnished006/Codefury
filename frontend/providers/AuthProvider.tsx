@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useUser as useClerkUser, useClerk } from "@clerk/nextjs";
 import { getApiBaseUrl } from "@/lib/api";
 
 export interface User {
@@ -56,6 +57,9 @@ function getCookie(name: string): string | null {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const clerk = useClerkUser();
+  const { signOut: clerkSignOut } = useClerk();
+
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [credits, setCredits] = useState<number>(500);
@@ -69,8 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("agentnet_token");
     localStorage.removeItem("agentnet_user");
     removeAuthCookie();
+    try {
+      clerkSignOut?.();
+    } catch {}
     router.push("/login");
-  }, [router]);
+  }, [router, clerkSignOut]);
 
   const refreshUser = useCallback(async () => {
     const savedToken =
@@ -140,6 +147,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
   }, [refreshUser]);
+
+  // Clerk Authentication Sync with AgentHub SQLite Backend
+  useEffect(() => {
+    if (clerk?.isLoaded && clerk.isSignedIn && clerk.user && !user) {
+      const email = clerk.user.primaryEmailAddress?.emailAddress || `${clerk.user.id}@clerk.user`;
+      const name = clerk.user.fullName || clerk.user.firstName || email.split("@")[0];
+      const avatar = clerk.user.imageUrl;
+
+      loginOAuth("google", {
+        user_info: {
+          email,
+          name,
+          picture: avatar,
+          sub: clerk.user.id,
+        },
+      }).catch((e) => console.error("Clerk sync error:", e));
+    }
+  }, [clerk?.isLoaded, clerk?.isSignedIn, clerk?.user, user]);
 
   const fetchBalance = useCallback(async (): Promise<number> => {
     if (!user?.id) return credits;

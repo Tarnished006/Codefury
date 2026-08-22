@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
-import { fetchProfileDetails, updateProfile, generateApiKey, deleteApiKey, fetchModels } from "@/lib/api";
+import { fetchProfileDetails, updateProfile, generateApiKey, deleteApiKey, fetchModels, getApiBaseUrl } from "@/lib/api";
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuthContext();
@@ -180,7 +180,8 @@ export default function ProfilePage() {
     setTestError(null);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/v1/chat/completions", {
+      const gwUrl = getApiBaseUrl().replace(/\/api\/?$/, "");
+      const res = await fetch(`${gwUrl}/v1/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -340,16 +341,16 @@ main();`
               </div>
 
               <div className="grid grid-cols-2 gap-3 font-mono text-xs">
-                <div className="bg-black/[0.02] p-3 border border-black/10">
-                  <span className="text-[10px] text-black/40 uppercase block">CREDIT_BALANCE</span>
-                  <strong className="text-black text-sm">
-                    {profileData?.wallet?.credit_balance ? profileData.wallet.credit_balance.toFixed(2) : "0.00"} CR
+                <div className="bg-black/[0.02] p-3.5 border border-black/10">
+                  <span className="text-[11px] text-black/50 uppercase block font-semibold">CREDIT_BALANCE</span>
+                  <strong className="text-black text-base block mt-0.5 font-bold">
+                    {(profileData?.balance_credits ?? profileData?.credits ?? user?.credits ?? 0).toFixed(2)} CR
                   </strong>
                 </div>
-                <div className="bg-black/[0.02] p-3 border border-black/10">
-                  <span className="text-[10px] text-black/40 uppercase block">USD_VALUE</span>
-                  <strong className="text-black text-sm">
-                    ${profileData?.wallet?.credit_balance ? (profileData.wallet.credit_balance * 0.01).toFixed(2) : "0.00"}
+                <div className="bg-black/[0.02] p-3.5 border border-black/10">
+                  <span className="text-[11px] text-black/50 uppercase block font-semibold">USD_VALUE</span>
+                  <strong className="text-black text-base block mt-0.5 font-bold">
+                    ${((profileData?.balance_credits ?? profileData?.credits ?? user?.credits ?? 0) * 0.01).toFixed(2)}
                   </strong>
                 </div>
               </div>
@@ -713,8 +714,10 @@ main();`
                       <div className="font-bold text-black">{testResult.agenthub_metadata?.credits_deducted || 0.004} CR</div>
                     </div>
                     <div className="p-2.5 bg-black/[0.02] border border-black/10">
-                      <div className="text-[9px] text-black/40 uppercase">Remaining Balance</div>
-                      <div className="font-bold text-emerald-600">{testResult.agenthub_metadata?.remaining_credits || profileData?.wallet?.credit_balance} CR</div>
+                      <div className="text-[10px] text-black/50 uppercase font-semibold">Remaining Balance</div>
+                      <div className="font-bold text-emerald-600">
+                        {testResult.agenthub_metadata?.remaining_credits?.toFixed(2) || (profileData?.balance_credits ?? user?.credits ?? 0).toFixed(2)} CR
+                      </div>
                     </div>
                   </div>
 

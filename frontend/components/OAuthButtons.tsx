@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { fetchOAuthUrl, loginWithOAuth } from "@/lib/api";
+import { useClerk } from "@clerk/nextjs";
+import { fetchOAuthUrl } from "@/lib/api";
 import { useAuthContext } from "@/providers/AuthProvider";
 
 interface OAuthButtonsProps {
@@ -20,6 +21,7 @@ export default function OAuthButtons({
   onError,
 }: OAuthButtonsProps) {
   const { loginOAuth } = useAuthContext();
+  const clerk = useClerk();
   const [oauthLoading, setOauthLoading] = useState<"google" | null>(null);
 
   const handleOAuthClick = async () => {
@@ -27,14 +29,21 @@ export default function OAuthButtons({
     if (onStart) onStart();
 
     try {
-      // 1. Fetch configured OAuth URL from backend with clean callback URL
+      // 1. Try Clerk SignIn
+      if (clerk && typeof (clerk as any).redirectToSignIn === "function") {
+        (clerk as any).redirectToSignIn({
+          returnBackUrl: redirectUrl,
+        });
+        return;
+      }
+
+      // 2. Fetch configured OAuth URL from backend with clean callback URL
       const currentRedirect =
         typeof window !== "undefined"
           ? `${window.location.origin}/auth/callback`
           : undefined;
       const res = await fetchOAuthUrl("google", currentRedirect);
 
-      // If real OAuth Client ID is configured and not a placeholder, redirect to provider auth screen
       if (
         res.client_id &&
         !res.client_id.includes("placeholder") &&
@@ -44,7 +53,7 @@ export default function OAuthButtons({
         return;
       }
 
-      // 2. Seamless local/fallback zero-config OAuth login
+      // 3. Fallback seamless login
       const result = await loginOAuth("google", {
         role,
         user_info: {
@@ -67,13 +76,13 @@ export default function OAuthButtons({
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {/* Google OAuth Button */}
       <button
         type="button"
         disabled={!!oauthLoading}
         onClick={handleOAuthClick}
-        className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-black/20 bg-white hover:bg-black/[0.02] text-xs font-mono font-bold uppercase tracking-wider text-black transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-[0.99]"
+        className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-black/20 bg-white hover:bg-black/[0.03] text-sm font-semibold text-black transition-all disabled:opacity-50 cursor-pointer shadow-sm rounded-md active:scale-[0.99]"
       >
         {oauthLoading === "google" ? (
           <Loader2 className="w-4 h-4 animate-spin text-black" />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import NeuralNavbar from "@/components/NeuralNavbar";
+import { getApiBaseUrl } from "@/lib/api";
 import {
   Sparkles,
   Zap,
@@ -103,7 +104,7 @@ export default function RecommenderPage() {
     setError(null);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/models/recommend", {
+      const res = await fetch(`${getApiBaseUrl()}/models/recommend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
