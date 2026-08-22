@@ -22,9 +22,12 @@ import {
   Bot,
   Terminal,
   Brain,
-  DollarSign
+  DollarSign,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
-import { fetchModels } from "@/lib/api";
+import { fetchModels, purchaseModel, testModel, fetchProfileDetails } from "@/lib/api";
+import { useAuthContext } from "@/providers/AuthProvider";
 
 const OrchestratorGlobe = dynamic(() => import("./OrchestratorGlobe"), {
   ssr: false,
@@ -39,6 +42,7 @@ const OrchestratorGlobe = dynamic(() => import("./OrchestratorGlobe"), {
 });
 
 const DOMAINS = ["ALL DOMAINS", "LLM CHAT", "CODE GEN", "VISION AI", "HEALTHCARE", "FINANCE"];
+const ITEMS_PER_PAGE = 10;
 
 const FEATURES = [
   {
@@ -80,11 +84,17 @@ const FEATURES = [
 ];
 
 export default function NeuralHero() {
+  const { user, fetchBalance } = useAuthContext();
   const [selectedDomain, setSelectedDomain] = useState("ALL DOMAINS");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [models, setModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [purchasedModelIds, setPurchasedModelIds] = useState<string[]>([]);
+  const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
+  const [testLoading, setTestLoading] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadModels() {
@@ -102,6 +112,52 @@ export default function NeuralHero() {
     loadModels();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      loadPurchasedModels();
+    }
+  }, [user]);
+
+  async function loadPurchasedModels() {
+    try {
+      const data = await fetchProfileDetails();
+      if (data && Array.isArray(data.purchased_models)) {
+        setPurchasedModelIds(data.purchased_models.map((pm: any) => pm.model_id));
+      }
+    } catch (err) {
+      console.error("Failed to load purchased models:", err);
+    }
+  }
+
+  const handlePurchase = async (modelId: string) => {
+    if (!window.confirm("Unlock full persistent API & deployment access to this model for 100.0 credits?")) {
+      return;
+    }
+    setPurchaseLoading(modelId);
+    try {
+      await purchaseModel(modelId);
+      setPurchasedModelIds((prev) => [...prev, modelId]);
+      await fetchBalance();
+      alert("Successfully purchased model access!");
+    } catch (err: any) {
+      alert(err.message || "Failed to purchase model.");
+    } finally {
+      setPurchaseLoading(null);
+    }
+  };
+
+  const handleTest = async (modelId: string) => {
+    setTestLoading(modelId);
+    try {
+      await testModel(modelId);
+      alert("Diagnostics verification test registered successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to run diagnostics test.");
+    } finally {
+      setTestLoading(null);
+    }
+  };
+
   const normalizeDomain = (d: string) => (d || "").replace("_", " ").toUpperCase();
 
   const filteredModels = models.filter((m) => {
@@ -117,6 +173,18 @@ export default function NeuralHero() {
 
     return domainMatch && searchMatch;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredModels.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedModels = filteredModels.slice(
+    (safeCurrentPage - 1) * ITEMS_PER_PAGE,
+    safeCurrentPage * ITEMS_PER_PAGE
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    document.getElementById("model-catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleCopy = (repo: string) => {
     navigator.clipboard.writeText(repo);
@@ -347,7 +415,7 @@ export default function NeuralHero() {
             </h2>
           </div>
           <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">
-            {filteredModels.length} of {models.length || 51} models available
+            {filteredModels.length} of {models.length || 51} models · page {safeCurrentPage}/{totalPages}
           </span>
         </div>
 
@@ -357,7 +425,7 @@ export default function NeuralHero() {
             {DOMAINS.map((domain) => (
               <button
                 key={domain}
-                onClick={() => setSelectedDomain(domain)}
+                onClick={() => { setSelectedDomain(domain); setCurrentPage(1); }}
                 className={`px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
                   selectedDomain === domain
                     ? "bg-black text-white"
@@ -375,7 +443,7 @@ export default function NeuralHero() {
               type="text"
               placeholder="SEARCH MODEL, REPO, TASK..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="w-full pl-9 pr-4 py-2 border border-black/15 bg-black/[0.015] text-xs font-mono text-black uppercase tracking-wider outline-none focus:border-black transition-colors"
             />
           </div>
@@ -383,7 +451,7 @@ export default function NeuralHero() {
 
         {/* Desktop Data Grid */}
         <div className="hidden lg:block border border-black/10 bg-white overflow-hidden divide-y divide-black/10">
-          <div className="grid grid-cols-[1.6fr_1.1fr_0.7fr_0.8fr_0.7fr_0.9fr] gap-4 items-center px-6 py-3.5 bg-black/[0.02] text-[10px] font-mono font-bold text-black/50 uppercase tracking-widest">
+          <div className="grid grid-cols-[1.4fr_1fr_0.7fr_0.8fr_0.6fr_1.8fr] gap-4 items-center px-6 py-3.5 bg-black/[0.02] text-[10px] font-mono font-bold text-black/50 uppercase tracking-widest">
             <span>Model & Hugging Face Repo</span>
             <span>Domain & Task</span>
             <span>P50 Latency</span>
@@ -393,14 +461,14 @@ export default function NeuralHero() {
           </div>
 
           <AnimatePresence mode="sync">
-            {filteredModels.map((m) => (
+            {paginatedModels.map((m) => (
               <motion.div
                 key={m.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="group grid grid-cols-[1.6fr_1.1fr_0.7fr_0.8fr_0.7fr_0.9fr] gap-4 items-center px-6 py-4 hover:bg-black/[0.015] transition-colors"
+                className="group grid grid-cols-[1.4fr_1fr_0.7fr_0.8fr_0.6fr_1.8fr] gap-4 items-center px-6 py-4 hover:bg-black/[0.015] transition-colors"
               >
                 <div>
                   <div className="font-sans font-bold text-sm text-black group-hover:text-[#FF4500] transition-colors flex items-center gap-2">
@@ -408,9 +476,14 @@ export default function NeuralHero() {
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-mono text-[11px] text-black/50 truncate max-w-[280px]">
+                    <span className="font-mono text-[11px] text-black/50 truncate max-w-[240px]">
                       {m.repo_id}
                     </span>
+                    {m.creator_id && (
+                      <span className="font-mono text-[9px] text-[#FF4500] font-bold uppercase tracking-wider select-none px-1.5 py-0.2 bg-[#FF4500]/5 border border-[#FF4500]/10 shrink-0">
+                        by @{m.creator_name || "Independent"}
+                      </span>
+                    )}
                     <button
                       onClick={() => handleCopy(m.repo_id)}
                       className="text-black/30 hover:text-black transition-colors"
@@ -451,12 +524,34 @@ export default function NeuralHero() {
                   <span className="text-[10px] font-normal text-black/40">/ 1k</span>
                 </div>
 
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-end gap-2">
+                  {purchasedModelIds.includes(m.id) ? (
+                    <>
+                      <span className="font-mono text-[8px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 uppercase">
+                        Purchased
+                      </span>
+                      <button
+                        onClick={() => handleTest(m.id)}
+                        disabled={testLoading === m.id}
+                        className="px-2.5 py-1.5 bg-black text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-[#FF4500] transition-colors disabled:opacity-50"
+                      >
+                        {testLoading === m.id ? "Testing..." : "Test Model"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handlePurchase(m.id)}
+                      disabled={purchaseLoading === m.id}
+                      className="px-2.5 py-1.5 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors disabled:opacity-50"
+                    >
+                      {purchaseLoading === m.id ? "Unlocking..." : "Buy Model (100 CR)"}
+                    </button>
+                  )}
                   <Link
                     href={`/arena?model=${encodeURIComponent(m.id)}`}
-                    className="btn-solid-black py-2 px-4 text-[10px] font-mono font-bold uppercase tracking-widest inline-flex items-center gap-1.5"
+                    className="btn-solid-black py-1.5 px-2.5 text-[9px] font-mono font-bold uppercase tracking-widest inline-flex items-center gap-1"
                   >
-                    <Play className="w-3 h-3 fill-white" />
+                    <Play className="w-2.5 h-2.5 fill-white" />
                     <span>Benchmark</span>
                   </Link>
                 </div>
@@ -465,9 +560,47 @@ export default function NeuralHero() {
           </AnimatePresence>
         </div>
 
+        {/* Desktop Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="hidden lg:flex items-center justify-between mt-4 pt-4 border-t border-black/10">
+            <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">
+              Showing {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safeCurrentPage * ITEMS_PER_PAGE, filteredModels.length)} of {filteredModels.length} models
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handlePageChange(safeCurrentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                className="w-8 h-8 flex items-center justify-center border border-black/15 text-black/50 hover:border-black hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`w-8 h-8 flex items-center justify-center font-mono text-xs font-bold transition-all border ${
+                    page === safeCurrentPage
+                      ? "bg-black text-white border-black"
+                      : "border-black/15 text-black/50 hover:border-black hover:text-black"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => handlePageChange(safeCurrentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+                className="w-8 h-8 flex items-center justify-center border border-black/15 text-black/50 hover:border-black hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Mobile Cards */}
         <div className="lg:hidden space-y-3">
-          {filteredModels.map((m) => (
+          {paginatedModels.map((m) => (
             <div
               key={m.id}
               className="border border-black/10 bg-white p-5 space-y-3"
@@ -481,6 +614,13 @@ export default function NeuralHero() {
                   <div className="font-mono text-[10px] text-black/50 truncate max-w-[200px] mt-1">
                     {m.repo_id}
                   </div>
+                  {m.creator_id && (
+                    <div className="mt-1">
+                      <span className="font-mono text-[8px] text-[#FF4500] font-bold uppercase tracking-wider select-none px-1.5 py-0.2 bg-[#FF4500]/5 border border-[#FF4500]/10 inline-block">
+                        by @{m.creator_name || "Independent"}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <span className="font-mono text-[9px] font-bold px-2 py-0.5 bg-black/[0.03] border border-black/10 uppercase">
                   {m.task_tag}
@@ -502,16 +642,70 @@ export default function NeuralHero() {
                 </div>
               </div>
 
-              <Link
-                href={`/arena?model=${encodeURIComponent(m.id)}`}
-                className="btn-solid-black w-full py-2.5 text-[10px] flex items-center justify-center gap-1.5"
-              >
-                <Play className="w-3 h-3 fill-white" />
-                <span>Benchmark Model</span>
-              </Link>
+              <div className="flex flex-col gap-2 pt-3 border-t border-black/5">
+                <div className="flex gap-2">
+                  {purchasedModelIds.includes(m.id) ? (
+                    <>
+                      <div className="flex-1 flex items-center justify-center font-mono text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 uppercase py-2">
+                        Purchased
+                      </div>
+                      <button
+                        onClick={() => handleTest(m.id)}
+                        disabled={testLoading === m.id}
+                        className="flex-1 py-2 bg-black text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-[#FF4500] transition-colors disabled:opacity-50"
+                      >
+                        {testLoading === m.id ? "Testing..." : "Test Model"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handlePurchase(m.id)}
+                      disabled={purchaseLoading === m.id}
+                      className="w-full py-2 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors disabled:opacity-50"
+                    >
+                      {purchaseLoading === m.id ? "Unlocking..." : "Buy Model (100 CR)"}
+                    </button>
+                  )}
+                </div>
+
+                <Link
+                  href={`/arena?model=${encodeURIComponent(m.id)}`}
+                  className="btn-solid-black w-full py-2 text-[9px] flex items-center justify-center gap-1"
+                >
+                  <Play className="w-2.5 h-2.5 fill-white" />
+                  <span>Benchmark Model</span>
+                </Link>
+              </div>
             </div>
           ))}
         </div>
+
+        {/* Mobile Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="lg:hidden flex items-center justify-between mt-6 pt-4 border-t border-black/10">
+            <span className="font-mono text-[10px] text-black/40 uppercase">
+              Page {safeCurrentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(safeCurrentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                className="flex items-center gap-1 px-3 py-2 border border-black/15 font-mono text-[10px] font-bold uppercase text-black/50 hover:border-black hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Prev
+              </button>
+              <button
+                onClick={() => handlePageChange(safeCurrentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-2 border border-black/15 font-mono text-[10px] font-bold uppercase text-black/50 hover:border-black hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Next
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════

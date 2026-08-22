@@ -37,6 +37,7 @@ export default function NeuralNavbar() {
     { href: "/security", label: "SECURITY_RADAR" },
     { href: "/creator", label: "CREATOR_STUDIO" },
     { href: "/wallet", label: "WALLET" },
+    { href: "/profile", label: "PROFILE" },
   ];
 
   return (
@@ -92,12 +93,20 @@ export default function NeuralNavbar() {
 
           {user ? (
             <div className="flex items-center gap-2 pl-1 border-l border-black/10">
-              <div className="px-3 py-1.5 bg-black/[0.02] border border-black/10 text-[10px] font-mono text-black flex items-center gap-1.5">
+              {user.role === "creator" && (
+                <span className="px-2 py-0.5 bg-[#FF4500]/10 border border-[#FF4500]/25 text-[#FF4500] text-[9px] font-mono font-extrabold uppercase tracking-wider select-none shrink-0">
+                  CREATOR
+                </span>
+              )}
+              <Link
+                href="/profile"
+                className="px-3 py-1.5 bg-black/[0.02] border border-black/10 text-[10px] font-mono text-black flex items-center gap-1.5 hover:border-black transition-colors"
+              >
                 <User className="w-3 h-3 text-black/50" />
                 <span className="font-bold truncate max-w-[110px]">
                   @{user.handle || user.email.split("@")[0]}
                 </span>
-              </div>
+              </Link>
               <button
                 onClick={logout}
                 title="Sign Out"
