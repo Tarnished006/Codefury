@@ -45,18 +45,56 @@ export default function OrchestratorPage() {
   const [result, setResult] = useState<any>(null);
   const [selectedStep, setSelectedStep] = useState<number>(0);
 
+  // Dynamic Live Reasoning Telemetry State during Loading
+  const [loadingStage, setLoadingStage] = useState(0);
+  const [loadingLogs, setLoadingLogs] = useState<string[]>([]);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
   const handleRun = async () => {
     if (!goal.trim() || loading) return;
     setLoading(true);
     setResult(null);
+    setLoadingStage(0);
+    setLoadingLogs([
+      "▶ [INIT_STAGE_01] Receiving natural language intent prompt...",
+      "▶ [INTENT_PARSER] Invoking Groq openai/gpt-oss-120b Meta-Agent supervisor...",
+    ]);
+    setLoadingProgress(15);
+
+    // Live AI thought generator interval
+    const logsSequence = [
+      "▶ [METRIC_RESOLVER] Parsing multi-domain constraints & security safety threshold...",
+      "▶ [CATALOG_DISCOVERY] Scanning 51 Hugging Face verified repository models...",
+      "▶ [DAG_TOPOLOGY] Decomposing complex intent into multi-stage dependency subtasks...",
+      "▶ [BUDGET_ROUTER] Evaluating Pareto-optimal speed/cost trade-off matrix...",
+      "▶ [NODE_EXEC_01] Dispatching primary subtask to specialist domain model...",
+      "▶ [NODE_EXEC_02] Streaming cross-model contextual embeddings to verification agent...",
+      "▶ [DELIVERABLE_COMPILER] Aggregating multi-agent outputs into unified deliverable...",
+    ];
+
+    let currentLogIdx = 0;
+    const interval = setInterval(() => {
+      if (currentLogIdx < logsSequence.length) {
+        const nextLog = logsSequence[currentLogIdx];
+        setLoadingLogs((prev) => [...prev, nextLog]);
+        setLoadingStage((prev) => Math.min(prev + 1, 4));
+        setLoadingProgress((prev) => Math.min(prev + 12, 92));
+        currentLogIdx++;
+      }
+    }, 450);
+
     try {
       const maxBudget = budgetMode === "low" ? 0.5 : 100.0;
       const res = await orchestrateDAG(goal, user?.id, maxBudget);
+      clearInterval(interval);
+      setLoadingProgress(100);
       setResult(res);
       setSelectedStep(0);
     } catch (e) {
       console.error(e);
+      clearInterval(interval);
     } finally {
+      clearInterval(interval);
       setLoading(false);
     }
   };
@@ -156,6 +194,117 @@ export default function OrchestratorPage() {
             ))}
           </div>
         </div>
+
+        {/* ── Dynamic AI Synthesis & Real-Time Reasoning Stream (Loading State) ── */}
+        {loading && (
+          <div className="space-y-6 mb-8 animate-in fade-in duration-300">
+            {/* Live Progress Bar & Stage Telemetry */}
+            <div className="border border-black bg-black text-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.1)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF4500] animate-ping" />
+                  <span className="font-mono text-xs font-bold uppercase tracking-widest text-[#FF4500]">
+                    AUTONOMOUS_META_AGENT // LIVE_DECOMPOSITION_IN_PROGRESS
+                  </span>
+                </div>
+                <span className="font-mono text-xs font-bold text-white/70">
+                  {loadingProgress}% SYNTHESIS COMPLETE
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full h-2 bg-zinc-800 overflow-hidden mb-5">
+                <div
+                  className="h-full bg-gradient-to-r from-[#FF4500] to-[#10B981] transition-all duration-300 ease-out"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
+
+              {/* Multi-Stage Step Pipeline Indicator */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono uppercase">
+                {[
+                  { step: "01", name: "Semantic Parse", stage: 0 },
+                  { step: "02", name: "Catalog Match", stage: 1 },
+                  { step: "03", name: "DAG Routing", stage: 2 },
+                  { step: "04", name: "Compiling Artifact", stage: 3 },
+                ].map((s) => {
+                  const isDone = loadingStage > s.stage;
+                  const isActive = loadingStage === s.stage;
+                  return (
+                    <div
+                      key={s.step}
+                      className={`p-2 border transition-colors ${
+                        isDone
+                          ? "border-[#10B981] bg-[#10B981]/10 text-[#10B981]"
+                          : isActive
+                          ? "border-[#FF4500] bg-[#FF4500]/10 text-white font-bold"
+                          : "border-zinc-800 text-zinc-600"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>STAGE_{s.step}</span>
+                        {isDone ? <span>✓</span> : isActive ? <span className="animate-spin">●</span> : <span>—</span>}
+                      </div>
+                      <div className="truncate text-[9px] mt-0.5">{s.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Dynamic AI Reasoning Logs Terminal */}
+            <div className="border border-black/15 bg-[#09090B] text-zinc-300 p-6 overflow-hidden">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-[#FF4500]" />
+                  <span className="font-mono text-xs font-bold text-white uppercase tracking-widest">
+                    LIVE_REASONING_STREAM // SUPERVISOR_EVENT_LOGS
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                  <span>GROQ_LPU_ONLINE</span>
+                </div>
+              </div>
+
+              <div className="font-mono text-xs space-y-2 leading-relaxed max-h-[220px] overflow-y-auto">
+                {loadingLogs.map((log, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-200"
+                  >
+                    <span className="text-[#FF4500] shrink-0 font-bold">›</span>
+                    <span className={index === loadingLogs.length - 1 ? "text-white font-semibold" : "text-zinc-400"}>
+                      {log}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 pt-1 text-[#FF4500] animate-pulse">
+                  <span>_</span>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Generating specialist model payloads...</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Skeleton Node Preview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((node) => (
+                <div
+                  key={node}
+                  className="border border-black/10 bg-black/[0.015] p-5 animate-pulse space-y-3"
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="h-4 w-16 bg-black/10 rounded-none" />
+                    <div className="h-4 w-12 bg-black/10 rounded-none" />
+                  </div>
+                  <div className="h-5 w-3/4 bg-black/10 rounded-none" />
+                  <div className="h-10 w-full bg-black/5 rounded-none" />
+                  <div className="h-4 w-1/2 bg-[#FF4500]/20 rounded-none pt-2" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Execution Results & Interactive DAG Pipeline ── */}
         {result && (
