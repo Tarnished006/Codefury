@@ -6,3 +6,6 @@ from app.routers.audit import router as audit_router
 from app.routers.sandbox import router as sandbox_router
 from app.routers.wallet import router as wallet_router
 from app.routers.creators import router as creators_router
+from app.routers.registry import router as registry_router
+from app.routers.recommendations import router as recommendations_router
+from app.routers.assistant import router as assistant_router

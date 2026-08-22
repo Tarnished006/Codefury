@@ -11,7 +11,10 @@ from app.routers import (
     audit_router,
     sandbox_router,
     wallet_router,
-    creators_router
+    creators_router,
+    registry_router,
+    recommendations_router,
+    assistant_router,
 )
 
 @asynccontextmanager
@@ -24,7 +27,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Multi-User, Dual-Sided AI Model Marketplace, Budget-Aware Meta-Agent & Double-Entry Ledger API",
+    description="Multi-User, Dual-Sided AI Model Marketplace, API Registry, Budget-Aware Meta-Agent & Double-Entry Ledger API",
     lifespan=lifespan
 )
 
@@ -46,16 +49,22 @@ app.include_router(audit_router, prefix=settings.API_V1_STR)
 app.include_router(sandbox_router, prefix=settings.API_V1_STR)
 app.include_router(wallet_router, prefix=settings.API_V1_STR)
 app.include_router(creators_router, prefix=settings.API_V1_STR)
+app.include_router(registry_router, prefix=settings.API_V1_STR)
+app.include_router(recommendations_router, prefix=settings.API_V1_STR)
+app.include_router(assistant_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
     return {
-        "service": "AgentHub AI Marketplace & Economic Engine",
+        "service": "AgentHub AI Marketplace, API Registry & Economic Engine",
         "version": settings.VERSION,
         "status": "OPERATIONAL",
         "pillars": [
-            "Budget-Aware Meta-Agent",
+            "API Registry Gateway (External Endpoint Proxy & Metering)",
+            "Budget-Aware Meta-Agent Orchestration",
+            "Intelligent Model Recommendation & Platform Copilot",
             "Double-Entry Ledger (80/20 Creator Split)",
+            "OWASP Red-Team Security Radar",
             "High-Concurrency Multi-User Engine"
         ],
         "docs_url": "/docs",
@@ -64,4 +73,11 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "gpu_clusters": 8, "p50_latency_ms": 38, "concurrency_engine": "asyncio_pooled"}
+    return {
+        "status": "healthy",
+        "gpu_clusters": 8,
+        "p50_latency_ms": 38,
+        "api_registry": "active",
+        "assistant_copilot": "online",
+        "concurrency_engine": "asyncio_pooled"
+    }
