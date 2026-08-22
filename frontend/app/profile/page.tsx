@@ -15,7 +15,12 @@ import {
   Calendar,
   Layers,
   ArrowRight,
-  Plus
+  Plus,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  ShieldCheck
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
@@ -39,6 +44,9 @@ export default function ProfilePage() {
   const [keyName, setKeyName] = useState("");
   const [keyLoading, setKeyLoading] = useState(false);
   const [newKeyGenerated, setNewKeyGenerated] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [showNewKey, setShowNewKey] = useState(true);
+  const [copiedRowId, setCopiedRowId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfileDetails();
@@ -282,38 +290,110 @@ export default function ProfilePage() {
             </div>
 
             {/* Active API Keys & Generator */}
-            <div className="border border-black/10 p-6">
-              <h3 className="font-sans font-bold text-xs uppercase text-black tracking-wider mb-4 border-b border-black/10 pb-2 flex items-center justify-between">
-                <span>ACTIVE_API_TOKENS</span>
-                <Key className="w-3.5 h-3.5 text-black/40" />
-              </h3>
+            <div className="border border-black/10 p-6 bg-white space-y-4">
+              <div className="flex items-center justify-between border-b border-black/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-[#FF4500]" />
+                  <h3 className="font-sans font-bold text-xs uppercase text-black tracking-wider">
+                    PRODUCTION_API_KEYS
+                  </h3>
+                </div>
+                <span className="font-mono text-[9px] text-black/50 uppercase">
+                  SHA-256 Secured Client Access
+                </span>
+              </div>
 
               {newKeyGenerated && (
-                <div className="mb-4 p-4 bg-orange-50 border border-orange-200 font-mono text-[10px] text-orange-800">
-                  <p className="font-bold mb-1 uppercase">⚠️ Save your live production key. It won't be displayed again:</p>
-                  <div className="p-2.5 bg-white border border-orange-200 select-all font-bold text-xs text-black break-all">
-                    {newKeyGenerated}
+                <div className="p-4 bg-orange-50/80 border border-orange-300 font-mono text-[11px] text-orange-950 space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold flex items-center gap-1.5 text-orange-800 uppercase tracking-wider text-[10px]">
+                      <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+                      New API Key Generated — Copy & Save Now
+                    </span>
+                    <span className="text-[9px] text-orange-600 uppercase font-semibold">
+                      Revealed Only Once
+                    </span>
                   </div>
+
+                  <div className="flex items-center gap-2 bg-white p-2.5 border border-orange-300">
+                    <code className="font-mono text-xs font-bold text-black flex-1 break-all select-all">
+                      {showNewKey ? newKeyGenerated : "•".repeat(36) + newKeyGenerated.slice(-4)}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewKey(!showNewKey)}
+                      title={showNewKey ? "Hide key" : "Show key"}
+                      className="p-1.5 text-black/60 hover:text-black transition-colors"
+                    >
+                      {showNewKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(newKeyGenerated);
+                        setCopiedKey(true);
+                        setTimeout(() => setCopiedKey(false), 2500);
+                      }}
+                      className="px-3 py-1.5 bg-black text-white hover:bg-[#FF4500] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors shrink-0"
+                    >
+                      {copiedKey ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedKey ? "Copied!" : "Copy Key"}</span>
+                    </button>
+                  </div>
+
+                  <p className="text-[9px] text-orange-700 leading-relaxed font-sans">
+                    Use this key in Python SDK (<code className="bg-orange-100/70 px-1 py-0.5 font-mono text-[9px]">agenthub.Client(api_key=&quot;...&quot;)</code>) or cURL headers (<code className="bg-orange-100/70 px-1 py-0.5 font-mono text-[9px]">Authorization: Bearer ak_live_...</code>) to authenticate model requests directly against the mesh.
+                  </p>
                 </div>
               )}
 
-              <div className="space-y-3 mb-6">
+              <div className="space-y-2.5">
                 {profileData?.api_keys.length === 0 ? (
-                  <p className="font-mono text-[10px] text-black/40 uppercase py-2">
-                    No active developer tokens provisioned.
+                  <p className="font-mono text-[10px] text-black/40 uppercase py-3 text-center border border-dashed border-black/10">
+                    No active developer keys provisioned yet. Generate your first key below.
                   </p>
                 ) : (
-                  profileData?.api_keys.map((k: any) => (
-                    <div key={k.id} className="flex justify-between items-center bg-black/[0.01] border border-black/5 p-3 font-mono text-[10px]">
-                      <div>
-                        <p className="font-bold text-black uppercase">{k.name}</p>
-                        <p className="text-[9px] text-black/40 mt-0.5">{k.api_key}</p>
+                  profileData?.api_keys.map((k: any) => {
+                    const maskedPrefix = k.key_prefix || k.api_key || "ak_live_••••";
+                    const isRowCopied = copiedRowId === k.id;
+
+                    return (
+                      <div
+                        key={k.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-black/[0.02] border border-black/10 p-3 font-mono text-[10px] hover:border-black/30 transition-colors"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-black uppercase">{k.name}</span>
+                            <span className="px-1.5 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-bold">
+                              ACTIVE
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-black/60 font-mono tracking-wider">
+                            {maskedPrefix.length <= 12 ? `${maskedPrefix}••••••••••••••••` : `${maskedPrefix.slice(0, 10)}••••••••${maskedPrefix.slice(-4)}`}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[9px] text-black/40">
+                            {new Date(k.created_at).toLocaleDateString()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(k.api_key || maskedPrefix);
+                              setCopiedRowId(k.id);
+                              setTimeout(() => setCopiedRowId(null), 2000);
+                            }}
+                            className="px-2.5 py-1 border border-black/20 hover:border-black bg-white text-black font-bold uppercase text-[9px] flex items-center gap-1 transition-colors"
+                          >
+                            {isRowCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
+                            <span>{isRowCopied ? "Copied" : "Copy"}</span>
+                          </button>
+                        </div>
                       </div>
-                      <span className="text-[8px] text-black/40">
-                        {new Date(k.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
@@ -323,16 +403,16 @@ export default function ProfilePage() {
                   type="text"
                   value={keyName}
                   onChange={(e) => setKeyName(e.target.value)}
-                  placeholder="e.g. Production API Gateway Key"
+                  placeholder="e.g. Production Client Mesh Key"
                   className="flex-grow px-3 py-2 border border-black/15 bg-black/[0.01] text-xs font-mono text-black outline-none focus:border-black"
                   required
                 />
                 <button
                   type="submit"
                   disabled={keyLoading || !keyName.trim()}
-                  className="btn-solid-black px-4 text-[9px] font-mono uppercase tracking-widest flex items-center gap-1"
+                  className="bg-black text-white hover:bg-[#FF4500] px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-40"
                 >
-                  {keyLoading ? <Loader2 className="w-3 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  {keyLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                   <span>Generate Key</span>
                 </button>
               </form>

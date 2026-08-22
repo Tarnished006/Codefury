@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,19 @@ ARTIFACTS_DIR = Path("backend/artifacts")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def ensure_sandbox_sdk():
+    """Copies agenthub.py SDK into sandbox directory so import agenthub works in all executions."""
+    sdk_src = Path("backend/agenthub.py")
+    if not sdk_src.exists():
+        sdk_src = Path("agenthub.py")
+    if sdk_src.exists():
+        sdk_dst = SANDBOX_DIR / "agenthub.py"
+        try:
+            shutil.copy(sdk_src, sdk_dst)
+        except Exception:
+            pass
+
+
 @router.post("/sandbox/execute", response_model=ExecuteSnippetResponse)
 async def execute_code_snippet(
     req: ExecuteSnippetRequest,
@@ -37,8 +51,8 @@ async def execute_code_snippet(
 ):
     """
     Live Python/Node.js code execution via sandboxed subprocess runner.
-    - Writes payload to an isolated temp file in backend/temp_sandbox/{session_id}.py
-    - Executes with a hard 5-second timeout; kills process on expiry.
+    - Ensures agenthub.py SDK is available in the execution environment.
+    - Executes with a hard 10-second timeout.
     - Returns real stdout/stderr, exit_code, session_id, and execution latency.
     """
     start_time = time.monotonic()
@@ -46,8 +60,19 @@ async def execute_code_snippet(
     ext = "py" if req.language == "python" else "js"
     temp_file = SANDBOX_DIR / f"sess_{session_id}.{ext}"
 
+    # Ensure SDK is in sandbox dir
+    ensure_sandbox_sdk()
+
     # Write submitted code to isolated ephemeral file
     temp_file.write_text(req.code, encoding="utf-8")
+
+    # Set PYTHONPATH and encoding so import agenthub and unicode print cleanly
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    backend_path = str(Path("backend").resolve())
+    sandbox_path = str(SANDBOX_DIR.resolve())
+    curr_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{sandbox_path}{os.pathsep}{backend_path}{os.pathsep}{curr_pythonpath}"
 
     cmd = [sys.executable, str(temp_file)] if req.language == "python" else ["node", str(temp_file)]
 
@@ -57,11 +82,13 @@ async def execute_code_snippet(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=5.0
+                timeout=10.0,
+                env=env,
+                cwd=str(SANDBOX_DIR.resolve())
             )
             return res.stdout, res.stderr, res.returncode
         except subprocess.TimeoutExpired:
-            return "", "[Execution Timeout]: Script exceeded the 5-second resource limit and was terminated.", -1
+            return "", "[Execution Timeout]: Script exceeded the 10-second resource limit and was terminated.", -1
         except Exception as e:
             return "", f"[Subprocess Launch Error]: {type(e).__name__}: {str(e)}", -2
         finally:
@@ -93,61 +120,50 @@ async def execute_code_snippet(
 
     final_output = "\n".join(lines)
 
-    # Automatically register model as tested by user
-    if current_user and req.model_id:
-        tst_res = await db.execute(
-            select(TestedModel).filter(
-                TestedModel.user_id == current_user.id,
-                TestedModel.model_id == req.model_id
-            )
-        )
-        if not tst_res.scalars().first():
-            tst = TestedModel(
-                id=f"tst_{uuid.uuid4().hex[:10]}",
-                user_id=current_user.id,
-                model_id=req.model_id,
-                test_details=f"Sandbox code execution snippet ({req.language})"
-            )
-            db.add(tst)
-            await db.commit()
+    # Calculate token estimate
+    tokens_used = max(1, (len(stdout_text) // 4) + (len(req.code) // 4))
 
     return ExecuteSnippetResponse(
-        status="SUCCESS" if exit_code == 0 else ("TIMEOUT" if exit_code == -1 else "ERROR"),
+        session_id=session_id,
         output=final_output,
         execution_time_ms=duration_ms,
-        tokens_used=len(req.code.split()) + 12,
-        cost_deducted=0.005,
-        exit_code=exit_code,
-        session_id=session_id
+        tokens_used=tokens_used,
+        model_tested=req.model_id
     )
 
 
-@router.post("/keys", response_model=ApiKeyResponse)
-async def generate_api_key(
+@router.post("/auth/api-keys", response_model=ApiKeyResponse)
+async def generate_api_key_endpoint(
     req: CreateApiKeyRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Provisions a scoped production API key for live GPU cluster deployments and stores in DB."""
-    raw_key = f"ak_live_{uuid.uuid4().hex[:24]}"
-    key_prefix = raw_key[8:16]
-    hashed = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+    """
+    Provisions a production API key for SDK inference calls.
+    Returns the full secret key ONCE. Key is stored securely as a cryptographic hash.
+    """
+    raw_secret = f"ak_live_{uuid.uuid4().hex}{uuid.uuid4().hex[:8]}"
+    prefix = raw_secret[:12]
+    hashed = hashlib.sha256(raw_secret.encode()).hexdigest()
 
-    new_key = ApiKey(
-        id=f"key_{uuid.uuid4().hex[:8]}",
+    key_id = f"key_{uuid.uuid4().hex[:10]}"
+    api_key_obj = ApiKey(
+        id=key_id,
         user_id=current_user.id,
-        name=req.name,
-        key_prefix=key_prefix,
+        name=req.name or "Production Key",
+        key_prefix=prefix,
         hashed_key=hashed,
-        is_active=True
+        is_active=True,
+        created_at=datetime.datetime.utcnow()
     )
-    db.add(new_key)
+    db.add(api_key_obj)
     await db.commit()
-    await db.refresh(new_key)
 
     return ApiKeyResponse(
-        id=new_key.id,
-        name=new_key.name,
-        api_key=raw_key,
-        created_at=new_key.created_at
+        id=key_id,
+        name=api_key_obj.name,
+        key_prefix=prefix,
+        api_key=raw_secret,
+        created_at=api_key_obj.created_at,
+        is_active=True
     )
