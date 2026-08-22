@@ -2,12 +2,12 @@
 Universal Resilient LLM Service
 ================================
 Primary Engine: Groq (openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.6-27b)
-Fallback Engine: OpenAI (gpt-4.1-mini, gpt-4o-mini, gpt-4o)
+Fallback Engine: OpenAI (gpt-5-mini, gpt-4.1-mini, gpt-4o-mini)
 Hugging Face Engine: HF Inference Router
 
 Guarantees:
   • Zero mocked/hardcoded responses.
-  • Automatic, instantaneous failover to OpenAI gpt-4.1-mini on any Groq/HF error or rate limit.
+  • Automatic, instantaneous failover to OpenAI gpt-5-mini on any Groq/HF error or rate limit.
   • Rich token completions for code synthesis, security auditing, and autonomous DAG execution.
 """
 
@@ -30,8 +30,9 @@ GROQ_MODELS = [
     "groq/compound",
 ]
 
-# Verified OpenAI fallback models
+# Verified OpenAI fallback models (gpt-5-mini is primary fallback)
 OPENAI_MODELS = [
+    "gpt-5-mini",
     "gpt-4.1-mini",
     "gpt-4o-mini",
     "gpt-4o",
@@ -61,7 +62,7 @@ class UniversalLLMService:
             return None
         if self._openai_client is None or getattr(self._openai_client, "_api_key", None) != settings.OPENAI_API_KEY:
             try:
-                self._openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=30.0)
+                self._openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=35.0)
             except Exception as e:
                 logger.warning(f"OpenAI init failed: {e}")
                 self._openai_client = None
@@ -78,7 +79,7 @@ class UniversalLLMService:
         """
         Runs live LLM completion:
           1. Tries Groq primary models.
-          2. On any failure / rate limit, immediately executes via OpenAI gpt-4.1-mini.
+          2. On any failure / rate limit, immediately executes via OpenAI gpt-5-mini.
         """
         messages: List[Dict[str, str]] = []
         if system_prompt:
@@ -108,21 +109,39 @@ class UniversalLLMService:
                     logger.warning(f"Groq model {gm} failed: {e}. Trying fallback chain...")
                     continue
 
-        # ── Tier 2: OpenAI gpt-4.1-mini Fallback Execution ──
+        # ── Tier 2: OpenAI gpt-5-mini Fallback Execution ──
         openai_client = self.openai
         if openai_client:
             for om in OPENAI_MODELS:
                 try:
                     logger.info(f"Executing fallback completion via OpenAI model: {om}")
-                    res = await asyncio.wait_for(
-                        openai_client.chat.completions.create(
-                            model=om,
-                            messages=messages,
-                            temperature=temperature,
-                            max_tokens=max_tokens,
-                        ),
-                        timeout=25.0,
-                    )
+                    
+                    # gpt-5-mini requires max_completion_tokens (with reasoning buffer) and default temperature
+                    if "gpt-5" in om:
+                        oa_messages = []
+                        if system_prompt:
+                            oa_messages.append({"role": "developer", "content": system_prompt})
+                        oa_messages.append({"role": "user", "content": prompt})
+
+                        res = await asyncio.wait_for(
+                            openai_client.chat.completions.create(
+                                model=om,
+                                messages=oa_messages,
+                                max_completion_tokens=max(max_tokens, 1500),
+                            ),
+                            timeout=30.0,
+                        )
+                    else:
+                        res = await asyncio.wait_for(
+                            openai_client.chat.completions.create(
+                                model=om,
+                                messages=messages,
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                            ),
+                            timeout=25.0,
+                        )
+
                     if res.choices and res.choices[0].message.content:
                         text = res.choices[0].message.content.strip()
                         if text:
@@ -142,7 +161,7 @@ class UniversalLLMService:
         max_tokens: int = 600,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Streams token deltas from Groq with fallback to OpenAI gpt-4.1-mini stream.
+        Streams token deltas from Groq with fallback to OpenAI gpt-5-mini / gpt-4.1-mini stream.
         """
         messages: List[Dict[str, str]] = []
         if system_prompt:
@@ -171,18 +190,31 @@ class UniversalLLMService:
                     logger.warning(f"Groq stream on {gm} failed: {e}")
                     continue
 
-        # ── Fallback to OpenAI Stream ──
+        # ── Fallback to OpenAI Stream (gpt-5-mini / gpt-4.1-mini) ──
         openai_client = self.openai
         if openai_client:
             for om in OPENAI_MODELS:
                 try:
-                    stream = await openai_client.chat.completions.create(
-                        model=om,
-                        messages=messages,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        stream=True,
-                    )
+                    if "gpt-5" in om:
+                        oa_messages = []
+                        if system_prompt:
+                            oa_messages.append({"role": "developer", "content": system_prompt})
+                        oa_messages.append({"role": "user", "content": prompt})
+
+                        stream = await openai_client.chat.completions.create(
+                            model=om,
+                            messages=oa_messages,
+                            max_completion_tokens=max(max_tokens, 1200),
+                            stream=True,
+                        )
+                    else:
+                        stream = await openai_client.chat.completions.create(
+                            model=om,
+                            messages=messages,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            stream=True,
+                        )
                     async for chunk in stream:
                         delta = chunk.choices[0].delta.content if chunk.choices else None
                         if delta:
