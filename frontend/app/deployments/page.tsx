@@ -19,16 +19,9 @@ import {
   FileCode,
   RotateCcw,
   Loader2,
-  Globe,
-  Radio,
-  ExternalLink,
-  ShieldCheck,
-  Plus,
-  Boxes,
   Cpu,
-  RefreshCw,
-  ArrowRight,
-  Sliders
+  Plus,
+  ArrowRight
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { executeSandboxSnippet, fetchModels } from "@/lib/api";
@@ -48,7 +41,7 @@ const CODE_TEMPLATES = {
   python: (model: string) => `import agenthub
 
 # Initialize AgentHub client
-client = agenthub.Client(api_key="your_agenthub_api_key")
+client = agenthub.Client(api_key="ah_live_your_secret_api_key")
 
 # Stream inference from deployed open-weight model
 response = client.chat.completions.create(
@@ -60,28 +53,31 @@ response = client.chat.completions.create(
 for chunk in response:
     print(chunk.choices[0].delta.content or "", end="")`,
 
-  curl: (model: string) => `curl -X POST "http://localhost:8000/api/models/${model}/stream" \\
-  -H "Authorization: Bearer your_agenthub_api_key" \\
+  curl: (model: string) => `curl -X POST "http://localhost:8000/v1/chat/completions" \\
+  -H "Authorization: Bearer ah_live_your_secret_api_key" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "prompt": "Analyze system telemetry and optimize token throughput.",
-    "max_tokens": 512,
-    "stream": true
+    "model": "${model}",
+    "messages": [
+      {"role": "user", "content": "Analyze system telemetry and optimize token throughput."}
+    ],
+    "temperature": 0.7
   }'`,
 
-  javascript: (model: string) => `import { AgentHub } from "@agenthub/sdk";
+  javascript: (model: string) => `import OpenAI from "openai";
 
-const client = new AgentHub({ apiKey: "your_agenthub_api_key" });
+const client = new OpenAI({
+  baseURL: "http://localhost:8000/v1",
+  apiKey: "ah_live_your_secret_api_key"
+});
 
 async function run() {
-  const stream = await client.models.stream({
-    modelId: "${model}",
-    prompt: "Analyze system telemetry and optimize token throughput."
+  const completion = await client.chat.completions.create({
+    model: "${model}",
+    messages: [{ role: "user", content: "Analyze system telemetry and optimize token throughput." }]
   });
 
-  for await (const chunk of stream) {
-    process.stdout.write(chunk.token);
-  }
+  console.log(completion.choices[0].message.content);
 }
 
 run();`
@@ -126,7 +122,7 @@ const MCP_TOOLS = [
 ];
 
 export default function DeploymentsPage() {
-  const [activeTab, setActiveTab]         = useState<"mcp" | "sandbox" | "proxy">("mcp");
+  const [activeTab, setActiveTab]         = useState<"mcp" | "sandbox">("mcp");
   const [language, setLanguage]           = useState<"python" | "curl" | "javascript">("python");
   const [selectedModel, setSelectedModel] = useState("llama3-8b-instruct");
   const [copied, setCopied]               = useState(false);
@@ -140,38 +136,21 @@ export default function DeploymentsPage() {
   const [terminalOutput, setTerminalOutput] = useState<string | null>(null);
   const [execMetrics, setExecMetrics]     = useState<any>(null);
 
-  // Catalog Models & Registered Endpoints List State
+  // Catalog Models State
   const [allModels, setAllModels]         = useState<any[]>([]);
-  const [registeredList, setRegisteredList] = useState<any[]>([]);
-  const [loadingList, setLoadingList]       = useState(false);
-
-  // Proxy Test State
-  const [selectedEndpointId, setSelectedEndpointId] = useState<string>("llama3-8b-instruct");
-  const [testPrompt, setTestPrompt]       = useState("Write an idiomatic Python async function with type hints and error handling.");
-  const [testingProxy, setTestingProxy]   = useState(false);
-  const [proxyOutput, setProxyOutput]     = useState<any>(null);
-  const [proxyError, setProxyError]       = useState<string | null>(null);
+  const [loadingList, setLoadingList]     = useState(false);
 
   useEffect(() => {
-    loadModelsAndEndpoints();
+    loadModels();
   }, []);
 
-  const loadModelsAndEndpoints = async () => {
+  const loadModels = async () => {
     setLoadingList(true);
     try {
-      const [modelsData, regData] = await Promise.allSettled([
-        fetchModels(),
-        fetch("http://127.0.0.1:8000/api/registry/endpoints").then(r => r.ok ? r.json() : [])
-      ]);
-
-      if (modelsData.status === "fulfilled") {
-        setAllModels(modelsData.value);
-      }
-      if (regData.status === "fulfilled") {
-        setRegisteredList(regData.value);
-      }
+      const modelsData = await fetchModels();
+      setAllModels(modelsData || []);
     } catch (e) {
-      console.error("Failed to load models/endpoints", e);
+      console.error("Failed to load models", e);
     } finally {
       setLoadingList(false);
     }
@@ -222,45 +201,11 @@ export default function DeploymentsPage() {
       const res = await executeSandboxSnippet(language, customCode, selectedModel, "demo_key");
       setTerminalOutput(res.output);
       setExecMetrics(res);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setTerminalOutput("Error executing snippet in sandbox. Make sure the backend server is running on localhost:8000.");
+      setTerminalOutput(`Error executing snippet in sandbox: ${e.message || "Connection error"}\nMake sure the backend server is running on http://127.0.0.1:8000.`);
     } finally {
       setExecuting(false);
-    }
-  };
-
-  const handleTestProxy = async () => {
-    if (!testPrompt.trim()) return;
-    const epId = selectedEndpointId || "llama3-8b-instruct";
-    setTestingProxy(true);
-    setProxyOutput(null);
-    setProxyError(null);
-
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/registry/proxy-inference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endpoint_id: epId,
-          prompt: testPrompt,
-          max_tokens: 400,
-          temperature: 0.3,
-          user_id: "usr_guest_demo",
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || `Proxy returned HTTP ${res.status}`);
-      }
-
-      setProxyOutput(data);
-      await loadModelsAndEndpoints();
-    } catch (err: any) {
-      setProxyError(err.message || "Proxy inference execution failed.");
-    } finally {
-      setTestingProxy(false);
     }
   };
 
@@ -277,14 +222,14 @@ export default function DeploymentsPage() {
                 DEVELOPER_INFRASTRUCTURE_&_MCP_HUB
               </span>
               <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">
-                // Model Context Protocol, SDK Canvas & Live Gateway
+                // Model Context Protocol & Monaco SDK Sandbox
               </span>
             </div>
             <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
               deployments & mcp hub.
             </h1>
             <p className="text-xs text-black/60 mt-1 font-mono uppercase max-w-2xl">
-              Connect autonomous agents via MCP or execute code against the unified foundation model marketplace.
+              Connect autonomous agents via Model Context Protocol (MCP) or test execution code against the unified foundation model marketplace.
             </p>
           </div>
 
@@ -301,12 +246,12 @@ export default function DeploymentsPage() {
               className="px-4 py-2 border border-black/20 hover:border-black font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors flex items-center gap-1.5"
             >
               <Key className="w-3.5 h-3.5 text-[#FF4500]" />
-              <span>API Keys in Profile</span>
+              <span>API Keys & Playground</span>
             </Link>
           </div>
         </div>
 
-        {/* ── Primary Navigation Tabs ── */}
+        {/* ── Primary Navigation Tabs (Streamlined to 2 Tabs) ── */}
         <div className="flex items-center gap-2 mb-8 border-b border-black/15">
           <button
             onClick={() => setActiveTab("mcp")}
@@ -329,19 +274,7 @@ export default function DeploymentsPage() {
             }`}
           >
             <Code2 className="w-4 h-4 text-black" />
-            <span>2. Monaco SDK Code Canvas & Runner</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("proxy")}
-            className={`px-5 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
-              activeTab === "proxy"
-                ? "border-black text-black bg-black/[0.02]"
-                : "border-transparent text-black/40 hover:text-black"
-            }`}
-          >
-            <Globe className="w-4 h-4 text-black" />
-            <span>3. Live Gateway Proxy & Active Endpoints</span>
+            <span>2. Monaco SDK Code Canvas &amp; Runner</span>
           </button>
         </div>
 
@@ -599,222 +532,6 @@ export default function DeploymentsPage() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── TAB 3: LIVE GATEWAY PROXY & ACTIVE ENDPOINTS ── */}
-        {activeTab === "proxy" && (
-          <div className="space-y-8 animate-in fade-in duration-300 w-full">
-            {/* Live Gateway Purpose Card */}
-            <div className="p-6 bg-black/[0.02] border border-black flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-[#FF4500]" />
-                  <span>What is the Live Gateway Proxy?</span>
-                </div>
-                <p className="text-xs text-black/75 font-sans max-w-3xl leading-relaxed">
-                  The Gateway Proxy is AgentHub&apos;s universal inference router and double-entry metering engine.
-                  Instead of calling external endpoints directly, client SDKs and applications route requests through this proxy.
-                  The gateway dynamically tracks wall-clock latency, meters token consumption, verifies model availability, and distributes an automated 80% royalty share to creators.
-                </p>
-              </div>
-              <Link
-                href="/creator"
-                className="px-5 py-2.5 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors shrink-0 shadow-sm"
-              >
-                <span>Publish New Model</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {/* Live Gateway Proxy Tester */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
-              {/* Left: Test Controls */}
-              <div className="w-full border border-black p-6 bg-white space-y-5">
-                <div className="border-b border-black/10 pb-3">
-                  <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-[#FF4500]" />
-                    <span>Test Any Marketplace Model via Gateway</span>
-                  </div>
-                  <p className="text-[11px] text-black/60 font-sans mt-0.5">
-                    Select any catalog model or registered external endpoint to test real-time gateway routing.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                    Select Model Endpoint:
-                  </label>
-                  <select
-                    value={selectedEndpointId}
-                    onChange={(e) => setSelectedEndpointId(e.target.value)}
-                    className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs font-bold text-black"
-                  >
-                    <optgroup label="── Registered External Endpoints ──">
-                      {registeredList.map((ep) => (
-                        <option key={ep.id} value={ep.id}>
-                          {ep.model_name} ({ep.id}) · {ep.domain} · ${ep.price_per_1k_tokens}/1k
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="── Marketplace Foundation Models ──">
-                      {allModels.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.domain}) · ${m.price_per_1k}/1k
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                    Test Prompt:
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={testPrompt}
-                    onChange={(e) => setTestPrompt(e.target.value)}
-                    className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-sans text-xs text-black"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleTestProxy}
-                  disabled={testingProxy}
-                  className="w-full py-3 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                >
-                  {testingProxy ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Routing Request via Gateway...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>Execute Proxy Inference</span>
-                    </>
-                  )}
-                </button>
-
-                {proxyError && (
-                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-mono flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{proxyError}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Telemetry & Results */}
-              <div className="w-full border border-black p-6 bg-black/[0.02] space-y-5">
-                <div className="border-b border-black/10 pb-3">
-                  <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-                    <span>Gateway Telemetry & Response</span>
-                  </div>
-                </div>
-
-                {proxyOutput ? (
-                  <div className="space-y-4 animate-in fade-in duration-300">
-                    <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-                      <div className="p-2.5 bg-white border border-black/10">
-                        <div className="text-[9px] text-black/40 uppercase">Real Latency</div>
-                        <div className="font-bold text-black">{proxyOutput.latency_ms}ms</div>
-                      </div>
-                      <div className="p-2.5 bg-white border border-black/10">
-                        <div className="text-[9px] text-black/40 uppercase">Tokens Metered</div>
-                        <div className="font-bold text-black">{proxyOutput.tokens_metered}</div>
-                      </div>
-                      <div className="p-2.5 bg-white border border-black/10">
-                        <div className="text-[9px] text-black/40 uppercase">Settled Credits</div>
-                        <div className="font-bold text-black">{proxyOutput.cost_credits}</div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 bg-black text-white border border-black">
-                      <div className="font-mono text-[9px] text-[#FF4500] uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
-                        <span>Gateway Response ({proxyOutput.routing_mode}):</span>
-                        <span className="text-white/40">{proxyOutput.model_name}</span>
-                      </div>
-                      <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-[220px] overflow-y-auto">
-                        {proxyOutput.response}
-                      </pre>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-12 text-center text-xs font-mono text-black/40 bg-white border border-dashed border-black/15 uppercase">
-                    Select an endpoint on the left and click &quot;Execute Proxy Inference&quot; to inspect live round-trip telemetry.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Bottom Section: Active Registered Endpoints Table */}
-            <div className="border border-black p-6 bg-white space-y-4">
-              <div className="flex items-center justify-between border-b border-black/10 pb-3">
-                <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                  <Boxes className="w-4 h-4 text-black" />
-                  <span>Active Registered Endpoints in Gateway</span>
-                </div>
-                <button
-                  onClick={loadModelsAndEndpoints}
-                  className="text-[10px] font-mono text-black/60 hover:text-black flex items-center gap-1 uppercase"
-                >
-                  <RefreshCw className={`w-3 h-3 ${loadingList ? "animate-spin" : ""}`} />
-                  <span>Refresh</span>
-                </button>
-              </div>
-
-              {registeredList.length === 0 ? (
-                <div className="p-8 text-center text-xs font-mono text-black/40 bg-black/[0.01] border border-dashed border-black/15 uppercase">
-                  No custom external endpoints registered yet. Publish your models in Creator Studio!
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left font-mono text-xs border border-black/10">
-                    <thead className="bg-black text-white text-[10px] uppercase">
-                      <tr>
-                        <th className="p-2.5">Endpoint ID</th>
-                        <th className="p-2.5">Model Name</th>
-                        <th className="p-2.5">Domain</th>
-                        <th className="p-2.5">P50 Latency</th>
-                        <th className="p-2.5">Price / 1k</th>
-                        <th className="p-2.5">Status</th>
-                        <th className="p-2.5">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-black/10">
-                      {registeredList.map((ep) => (
-                        <tr key={ep.id} className="hover:bg-black/[0.02]">
-                          <td className="p-2.5 font-bold">{ep.id}</td>
-                          <td className="p-2.5 font-sans font-bold text-black">{ep.model_name}</td>
-                          <td className="p-2.5">{ep.domain}</td>
-                          <td className="p-2.5">{ep.p50_latency_ms}ms</td>
-                          <td className="p-2.5">${ep.price_per_1k_tokens}</td>
-                          <td className="p-2.5">
-                            <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[9px] font-bold">
-                              {ep.verification_status || "ONLINE"}
-                            </span>
-                          </td>
-                          <td className="p-2.5">
-                            <button
-                              onClick={() => {
-                                setSelectedEndpointId(ep.id);
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }}
-                              className="px-2.5 py-1 bg-black text-white hover:bg-[#FF4500] text-[9px] font-bold uppercase"
-                            >
-                              Test Proxy
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
           </div>
         )}

@@ -186,13 +186,14 @@ class ExecuteSnippetRequest(BaseModel):
     api_key: Optional[str] = None
 
 class ExecuteSnippetResponse(BaseModel):
-    status: str
+    status: str = "SUCCESS"
     output: str
     execution_time_ms: int
     tokens_used: int
-    cost_deducted: float
-    exit_code: Optional[int] = None
+    cost_deducted: float = 0.0
+    exit_code: Optional[int] = 0
     session_id: Optional[str] = None
+    model_tested: Optional[str] = None
 
 class CreateApiKeyRequest(BaseModel):
     name: str = "Live Production Key"

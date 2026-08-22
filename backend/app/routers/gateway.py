@@ -31,6 +31,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -347,11 +348,13 @@ async def chat_completions(
 
         completion_tokens = estimate_token_count(content_result)
         total_tokens = prompt_tokens + completion_tokens
-        cost_credits = round((total_tokens / 1000.0) * price_per_1k, 4)
+        cost_credits = max(0.001, round((total_tokens / 1000.0) * (price_per_1k or 0.10), 4))
         elapsed_ms = max(20, int((time.monotonic() - t0) * 1000))
 
         # Deduct credits from API Key balance
-        api_key.credits_balance = max(0.0, round(api_key.credits_balance - cost_credits, 4))
+        key_user_id = api_key.user_id
+        new_balance = max(0.0, round(api_key.credits_balance - cost_credits, 4))
+        api_key.credits_balance = new_balance
         await db.commit()
 
         # Record in double-entry ledger
@@ -359,7 +362,7 @@ async def chat_completions(
             async with AsyncSessionLocal() as session:
                 await ledger_service.record_inference_metering(
                     db=session,
-                    user_id=api_key.user_id,
+                    user_id=key_user_id,
                     model_id=req.model,
                     tokens=total_tokens,
                     cost_credits=cost_credits
@@ -390,7 +393,7 @@ async def chat_completions(
             "agenthub_metadata": {
                 "latency_ms": elapsed_ms,
                 "credits_deducted": cost_credits,
-                "remaining_credits": round(api_key.credits_balance, 4),
+                "remaining_credits": round(new_balance, 4),
                 "provider": provider_used
             }
         }

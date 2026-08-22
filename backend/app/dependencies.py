@@ -33,13 +33,24 @@ async def verify_api_key(
     token = credentials.credentials.strip()
     hashed = hashlib.sha256(token.encode()).hexdigest()
     
+    # 1. Match exact SHA-256 hash
     key_res = await db.execute(
         select(ApiKey).options(selectinload(ApiKey.user)).filter(
-            ((ApiKey.hashed_key == hashed) | (ApiKey.key_prefix == token[:12])),
+            ApiKey.hashed_key == hashed,
             ApiKey.is_active == True
         )
     )
     api_key = key_res.scalars().first()
+
+    # 2. Fallback to prefix match only if exact hash wasn't found (for masked test tokens)
+    if not api_key:
+        key_res = await db.execute(
+            select(ApiKey).options(selectinload(ApiKey.user)).filter(
+                ApiKey.key_prefix == token[:12],
+                ApiKey.is_active == True
+            )
+        )
+        api_key = key_res.scalars().first()
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

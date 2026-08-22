@@ -74,7 +74,7 @@ async def execute_code_snippet(
     curr_pythonpath = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = f"{sandbox_path}{os.pathsep}{backend_path}{os.pathsep}{curr_pythonpath}"
 
-    cmd = [sys.executable, str(temp_file)] if req.language == "python" else ["node", str(temp_file)]
+    cmd = [sys.executable, str(temp_file.resolve())] if req.language == "python" else ["node", str(temp_file.resolve())]
 
     def _run_subprocess():
         try:
@@ -124,10 +124,13 @@ async def execute_code_snippet(
     tokens_used = max(1, (len(stdout_text) // 4) + (len(req.code) // 4))
 
     return ExecuteSnippetResponse(
-        session_id=session_id,
+        status="SUCCESS" if exit_code == 0 else "ERROR",
         output=final_output,
         execution_time_ms=duration_ms,
         tokens_used=tokens_used,
+        cost_deducted=round((tokens_used / 1000.0) * 0.05, 4),
+        exit_code=exit_code,
+        session_id=session_id,
         model_tested=req.model_id
     )
 
