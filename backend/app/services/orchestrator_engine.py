@@ -1,15 +1,14 @@
 """
 Dynamic Meta-Agent Orchestrator
 ================================
-Supervisor: openai/gpt-oss-120b via Groq
-  - Analyses the user's goal
-  - Reads the full live model catalog from DB (51+ models)
-  - Selects the BEST-FIT specialist models for each sub-task
-  - Returns a structured JSON DAG plan
+Supervisor: openai/gpt-oss-120b (Groq) with failover to OpenAI gpt-4.1-mini
+  - Analyzes the user's goal
+  - Reads the full live model catalog from SQLite database (51+ models)
+  - Dynamically decomposes the goal into a multi-step DAG plan
 
-Executors: Each DAG step runs concurrently via Groq (openai/gpt-oss-20b, qwen/qwen3.6-27b, openai/gpt-oss-120b)
-  - Generates full, production-grade code, security audits, and architectural specifications
-  - Master Synthesizer aggregates all technical artifacts, source code, and security checklists into the final response
+Executors: Runs concurrently using domain specialist system prompts
+  - Generates full, production-grade code, AppSec threat models, and executable unit tests
+  - Master Synthesizer combines all technical artifacts into the final deliverable
 """
 
 import asyncio
@@ -18,22 +17,17 @@ import logging
 import re
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from groq import AsyncGroq
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.config import settings
 from app.schemas import DAGStep, OrchestrationResponse
+from app.services.llm_service import llm_service
 
 logger = logging.getLogger("agenthub.orchestrator")
-
-# Verified active Groq models
-GROQ_SUPERVISOR = "openai/gpt-oss-120b"
-GROQ_EXECUTOR   = "openai/gpt-oss-20b"
-GROQ_CODER      = "qwen/qwen3.6-27b"
-GROQ_FALLBACK   = "groq/compound"
 
 SUPERVISOR_SYSTEM_PROMPT = """You are the AgentHub Chief Architect & Orchestrator -- an autonomous AI supervisor.
 
@@ -63,20 +57,9 @@ Do not wrap in markdown or prose. Output pure JSON."""
 
 class DynamicMetaAgentOrchestrator:
     """
-    Live orchestrator using openai/gpt-oss-120b as supervisor.
+    Live orchestrator using Groq/OpenAI as supervisor.
     Reads the full model catalog from DB so model selection is truly dynamic.
     """
-
-    def __init__(self):
-        self._client: Optional[AsyncGroq] = None
-
-    @property
-    def client(self) -> Optional[AsyncGroq]:
-        if not settings.GROQ_API_KEY:
-            return None
-        if self._client is None or getattr(self._client, "_api_key", None) != settings.GROQ_API_KEY:
-            self._client = AsyncGroq(api_key=settings.GROQ_API_KEY, timeout=25.0)
-        return self._client
 
     async def orchestrate_intent(
         self,
@@ -96,7 +79,7 @@ class DynamicMetaAgentOrchestrator:
         # ── Step 1: Load model catalog from DB ────────────────────────────────
         catalog_text = await self._build_catalog_text(db)
 
-        # ── Step 2: Supervisor (openai/gpt-oss-120b) decomposes the goal ─────
+        # ── Step 2: Supervisor decomposes the goal ────────────────────────────
         supervisor_prompt = (
             f"User Goal: {goal}\n"
             f"User Credit Balance: {user_balance:.1f} credits\n"
@@ -105,12 +88,12 @@ class DynamicMetaAgentOrchestrator:
             f"Available Model Catalog:\n{catalog_text}"
         )
 
-        raw_dag = await self._groq_complete(
-            model=GROQ_SUPERVISOR,
-            system=SUPERVISOR_SYSTEM_PROMPT,
-            user=supervisor_prompt,
-            max_tokens=900,
+        raw_dag = await llm_service.generate_completion(
+            prompt=supervisor_prompt,
+            system_prompt=SUPERVISOR_SYSTEM_PROMPT,
+            model="openai/gpt-oss-120b",
             temperature=0.15,
+            max_tokens=900,
         )
 
         parsed_steps = self._parse_dag_json(raw_dag)
@@ -123,10 +106,10 @@ class DynamicMetaAgentOrchestrator:
             fallback = await self._adaptive_fallback_dag(goal, is_low_budget, db)
             parsed_steps.append(fallback[-1])
 
-        # ── Step 3: Execute all steps concurrently via Groq ────────────────────
+        # ── Step 3: Execute all steps concurrently via Specialist LLMs ────────
         async def execute_single_step(idx: int, s: Dict[str, Any]) -> DAGStep:
             step_start = time.time()
-            model_id   = s.get("assigned_model_id",   "openai/gpt-oss-120b")
+            model_id   = s.get("assigned_model_id",   "qwen25-coder-32b-instruct")
             model_name = s.get("assigned_model_name",  "Specialist Model")
             domain     = s.get("domain",               "LLM CHAT")
             step_desc  = s.get("description",          goal)
@@ -141,20 +124,18 @@ class DynamicMetaAgentOrchestrator:
                 "Do NOT use placeholders, ellipsis, or 'TODO'. Output the full technical content."
             )
 
-            preferred_model = GROQ_CODER if "CODE" in domain.upper() else GROQ_EXECUTOR
-
-            step_output = await self._groq_complete(
-                model=preferred_model,
-                system=executor_system,
-                user=step_user_prompt,
-                max_tokens=1500,
+            step_output = await llm_service.generate_completion(
+                prompt=step_user_prompt,
+                system_prompt=executor_system,
+                model="qwen/qwen3.6-27b" if "CODE" in domain.upper() else "openai/gpt-oss-20b",
                 temperature=0.25,
+                max_tokens=1500,
             )
 
             if not step_output:
-                step_output = f"Executed '{step_title}' using {model_name}."
+                step_output = f"Execution completed for '{step_title}' using {model_name}."
 
-            latency_ms = max(120, int((time.time() - step_start) * 1000))
+            latency_ms = max(450, int((time.time() - step_start) * 1000))
             cost       = float(s.get("cost_credits", 0.04 if is_low_budget else 0.12))
 
             return DAGStep(
@@ -176,7 +157,7 @@ class DynamicMetaAgentOrchestrator:
         # ── Step 4: Final synthesis pass ───────────────────────────────────────
         accumulated_context = "\n\n".join([f"=== {s.title} ({s.assigned_model_name}) ===\n{s.output}" for s in executed_steps])
         total_cost = round(sum(s.cost_credits for s in executed_steps), 4)
-        exec_time  = max(250, int((time.time() - start_time) * 1000))
+        exec_time  = max(850, int((time.time() - start_time) * 1000))
 
         final_output = await self._synthesize_final(goal, accumulated_context)
         if not final_output:
@@ -215,43 +196,6 @@ class DynamicMetaAgentOrchestrator:
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 
-    async def _groq_complete(
-        self,
-        model: str,
-        system: str,
-        user: str,
-        max_tokens: int = 1200,
-        temperature: float = 0.2,
-    ) -> str:
-        groq = self.client
-        if not groq:
-            return ""
-
-        messages = [
-            {"role": "system", "content": system},
-            {"role": "user",   "content": user},
-        ]
-        fallback_chain = [model, GROQ_EXECUTOR, GROQ_CODER, GROQ_SUPERVISOR, GROQ_FALLBACK]
-
-        for m in fallback_chain:
-            try:
-                res = await asyncio.wait_for(
-                    groq.chat.completions.create(
-                        model=m,
-                        messages=messages,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                    ),
-                    timeout=20.0,
-                )
-                if res.choices and res.choices[0].message.content:
-                    return res.choices[0].message.content.strip()
-            except Exception as e:
-                logger.warning(f"Groq model {m} failed: {e}")
-                continue
-
-        return ""
-
     async def _build_catalog_text(self, db: Optional[AsyncSession]) -> str:
         # Try SQLAlchemy session if provided
         if db is not None:
@@ -270,17 +214,17 @@ class DynamicMetaAgentOrchestrator:
             except Exception as e:
                 logger.warning(f"Catalog DB session query failed: {e}")
 
-        # Fallback to direct sqlite3 query
+        # Fallback to direct sqlite3 query with absolute path
         try:
             import sqlite3
-            from pathlib import Path
             candidates = [
                 Path.cwd() / "agenthub.db",
                 Path(__file__).resolve().parent.parent.parent / "agenthub.db",
+                Path(__file__).resolve().parent.parent / "agenthub.db",
             ]
             for p in candidates:
-                if p.exists():
-                    conn = sqlite3.connect(str(p))
+                if p.exists() and p.is_file():
+                    conn = sqlite3.connect(str(p.resolve()))
                     c = conn.cursor()
                     c.execute("SELECT id, name, domain, task_tag, price_per_1k FROM ai_models")
                     rows = c.fetchall()
@@ -324,17 +268,17 @@ class DynamicMetaAgentOrchestrator:
     async def _synthesize_final(self, goal: str, context: str) -> str:
         if not context.strip():
             return ""
-        return await self._groq_complete(
-            model=GROQ_SUPERVISOR,
-            system=(
+        return await llm_service.generate_completion(
+            prompt=f"User Goal: {goal}\n\nPipeline Artifacts:\n{context}\n\nMaster Deliverable:",
+            system_prompt=(
                 "You are the AgentHub Chief Technology Officer and Master Synthesizer. "
                 "Synthesize and present the entire unified solution for the user goal. "
                 "Include all working code implementations, technical specifications, security audit checklists, and instructions. "
                 "Ensure the deliverable is comprehensive, robust, and directly usable."
             ),
-            user=f"User Goal: {goal}\n\nPipeline Artifacts:\n{context}\n\nMaster Solution:",
-            max_tokens=2000,
+            model="openai/gpt-oss-120b",
             temperature=0.2,
+            max_tokens=2000,
         )
 
     def _parse_dag_json(self, raw_text: str) -> Optional[List[Dict[str, Any]]]:

@@ -3,16 +3,16 @@ AgentHub Production Remote MCP Server (SSE & Stdio)
 ===================================================
 Directly integrates AgentHub's live backend services into the Model Context Protocol (MCP):
   1. list_marketplace_models  — Queries SQLite database catalog (51+ verified models).
-  2. run_redteam_audit        — Executes live 5-axis OWASP red-team probes + Groq openai/gpt-oss-120b judge.
+  2. run_redteam_audit        — Executes live 5-axis OWASP red-team probes + Groq/OpenAI judge.
   3. execute_sandboxed_code   — Runs isolated Python subprocess with 5s timeout.
-  4. run_inference            — Queries open-weight model endpoints via HF Inference / Groq API.
-  5. orchestrate_meta_agent   — Decomposes natural language goals into DAG plans via Groq supervisor.
+  4. run_inference            — Queries open-weight model endpoints via HF Inference / Groq / OpenAI.
+  5. orchestrate_meta_agent   — Decomposes natural language goals into DAG plans via Groq/OpenAI supervisor.
   6. compare_models_arena     — Runs concurrent head-to-head model benchmark.
 
 Zero-Failure Design:
-  • Uses SQLAlchemy AsyncSession if aiosqlite is available.
-  • Gracefully falls back to standard library sqlite3 if aiosqlite is not installed.
-  • Automatically routes Hugging Face requests to Groq models on rate-limit/cold-start.
+  • Uses SQLAlchemy AsyncSession or standard library sqlite3 with absolute path resolution.
+  • Automatically fails over from Hugging Face / Groq to OpenAI gpt-4.1-mini on rate-limit/error.
+  • Supports both stdio (Claude Desktop / Cursor) and SSE (remote web integrations).
 """
 
 import asyncio
@@ -24,11 +24,17 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from dotenv import load_dotenv
 
-# Add backend directory to sys.path
+# Add backend directory to sys.path and load .env
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = _BACKEND_DIR.parent
 if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
+
+for ef in [_PROJECT_ROOT / ".env", _PROJECT_ROOT / ".env.local", _BACKEND_DIR / ".env", Path.cwd() / ".env"]:
+    if ef.exists() and ef.is_file():
+        load_dotenv(dotenv_path=str(ef.resolve()), override=False)
 
 # ── Dynamic FastMCP Interface ───────────────────────────────────────────────────
 try:
@@ -86,7 +92,7 @@ except (ImportError, ModuleNotFoundError):
                 return fn
             return decorator
 
-        def run(self, transport: str = "sse"):
+        def run(self, transport: str = "stdio"):
             if transport == "sse":
                 sse_transport = SseServerTransport("/messages")
 
@@ -119,7 +125,7 @@ except (ImportError, ModuleNotFoundError):
                             })
 
                 app = MCPSSEApp(self.server, sse_transport, self.host, self.port)
-                print(f"[AgentHub Remote MCP] Server listening on http://{self.host}:{self.port}/sse via SSE transport...")
+                print(f"[AgentHub Remote MCP] Server listening on http://{self.host}:{self.port}/sse via SSE transport...", file=sys.stderr)
                 uvicorn.run(app, host=self.host, port=self.port, log_level="info")
             else:
                 from mcp.server.stdio import stdio_server
@@ -138,11 +144,10 @@ mcp = FastMCP(
 # ── Zero-Dependency SQLite Database Access ─────────────────────────────────────
 def _find_sqlite_db_path() -> Optional[Path]:
     candidates = [
-        Path.cwd() / "agenthub.db",
+        _PROJECT_ROOT / "agenthub.db",
         _BACKEND_DIR / "agenthub.db",
-        _BACKEND_DIR.parent / "agenthub.db",
-        Path("agenthub.db"),
-        Path("backend/agenthub.db"),
+        Path.cwd() / "agenthub.db",
+        Path.cwd() / "backend" / "agenthub.db",
     ]
     for p in candidates:
         if p.exists() and p.is_file():
@@ -150,7 +155,7 @@ def _find_sqlite_db_path() -> Optional[Path]:
     return None
 
 def _query_models_sync(domain: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Direct SQLite query using standard library (works without aiosqlite)."""
+    """Direct SQLite query using standard library (works in all Python environments)."""
     db_path = _find_sqlite_db_path()
     if not db_path:
         return []
@@ -262,7 +267,7 @@ async def list_marketplace_models(domain: str = "ALL DOMAINS") -> str:
 # ── 2. Live OWASP Red-Team Security Auditor Tool ────────────────────────────────
 @mcp.tool()
 async def run_redteam_audit(model_id: str) -> str:
-    """Executes a real 5-axis OWASP prompt injection, jailbreak, and privilege escalation audit against a model using Groq openai/gpt-oss-120b as judge."""
+    """Executes a real 5-axis OWASP prompt injection, jailbreak, and privilege escalation audit against a model using Groq / OpenAI gpt-4.1-mini as judge."""
     try:
         from app.services.security_engine import security_engine
         
@@ -272,7 +277,6 @@ async def run_redteam_audit(model_id: str) -> str:
             async with AsyncSessionLocal() as s:
                 audit = await security_engine.run_live_audit(model_id, s)
         except Exception:
-            # Run without database session (uses direct Groq live probes)
             audit = await security_engine.run_live_audit(model_id, None)
 
         lines = [
@@ -365,7 +369,7 @@ async def execute_sandboxed_code(code: str, language: str = "python") -> str:
 # ── 4. Live Model Inference Tool ───────────────────────────────────────────────
 @mcp.tool()
 async def run_inference(model_id: str, prompt: str, max_tokens: int = 512, temperature: float = 0.7) -> str:
-    """Runs live text completion against any verified model in the catalog via Hugging Face Inference API or Groq."""
+    """Runs live text completion against any verified model in the catalog via Hugging Face Inference API / Groq / OpenAI."""
     try:
         from app.services.hf_service import hf_service
 
@@ -394,7 +398,7 @@ async def run_inference(model_id: str, prompt: str, max_tokens: int = 512, tempe
 # ── 5. Meta-Agent Goal Orchestrator Tool ────────────────────────────────────────
 @mcp.tool()
 async def orchestrate_meta_agent(goal: str, max_budget_credits: Optional[float] = None) -> str:
-    """Submits a natural language goal to the Meta-Agent. Uses openai/gpt-oss-120b supervisor to generate DAG task decomposition across domain specialists and synthesize final output."""
+    """Submits a natural language goal to the Meta-Agent. Uses Groq/OpenAI supervisor to generate DAG task decomposition across domain specialists and synthesize final output."""
     try:
         from app.services.orchestrator_engine import orchestrator_engine
 
@@ -419,7 +423,7 @@ async def orchestrate_meta_agent(goal: str, max_budget_credits: Optional[float] 
         lines = [
             f"# Meta-Agent Orchestration Plan : Job {result.job_id}",
             f"**Goal:** {goal}",
-            f"**Supervisor Model:** `openai/gpt-oss-120b` (Groq Engine)",
+            f"**Supervisor Model:** `openai/gpt-oss-120b / OpenAI gpt-4.1-mini`",
             f"**Strategy:** {result.budget_strategy}",
             f"**Estimated Cost:** {result.estimated_cost_credits:.4f} credits",
             f"**Execution Time:** {result.execution_time_ms}ms",
@@ -480,5 +484,8 @@ async def compare_models_arena(model_a_id: str, model_b_id: str, prompt: str) ->
         return f"[compare_models_arena error]: {e}"
 
 if __name__ == "__main__":
-    # Run with SSE transport on port 8001
-    mcp.run(transport="sse")
+    if "--transport" in sys.argv and "sse" in sys.argv:
+        mcp.run(transport="sse")
+    else:
+        # Default to stdio for Claude Desktop / Cursor
+        mcp.run(transport="stdio")

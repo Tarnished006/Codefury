@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
-    # Database
+    # Database (Absolute file path to prevent bad path / permission errors)
     DATABASE_URL: str = f"sqlite+aiosqlite:///{_db_str}"
     
     # Hugging Face API Credentials
@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     
     # Groq API Credentials
     GROQ_API_KEY: Optional[str] = None
+    
+    # OpenAI API Credentials (Fallback engine)
+    OPENAI_API_KEY: Optional[str] = None
     
     # Stripe Payment Credentials
     STRIPE_PUBLISHABLE_KEY: Optional[str] = None
