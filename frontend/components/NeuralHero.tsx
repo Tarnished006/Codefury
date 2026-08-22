@@ -134,7 +134,7 @@ export default function NeuralHero() {
         setPurchasedModelIds(data.purchased_models.map((pm: any) => pm.model_id));
       }
     } catch (err) {
-      console.error("Failed to load purchased models:", err);
+      console.warn("Purchased models unavailable:", err);
     }
   }
 

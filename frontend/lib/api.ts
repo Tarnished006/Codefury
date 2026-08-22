@@ -1,4 +1,14 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+      return envUrl;
+    }
+    const hostname = window.location.hostname || "localhost";
+    return `http://${hostname}:8000/api`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+}
 
 function getAuthHeaders(): HeadersInit {
   const headers: Record<string, string> = {
@@ -14,22 +24,23 @@ function getAuthHeaders(): HeadersInit {
 }
 
 export async function fetchModels(domain?: string) {
+  const baseUrl = getApiBaseUrl();
   const url = domain && domain !== "ALL_DOMAINS" 
-    ? `${API_BASE_URL}/models?domain=${encodeURIComponent(domain)}`
-    : `${API_BASE_URL}/models`;
+    ? `${baseUrl}/models?domain=${encodeURIComponent(domain)}`
+    : `${baseUrl}/models`;
   const res = await fetch(url, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch models");
   return res.json();
 }
 
 export async function fetchModelAudit(modelId: string) {
-  const res = await fetch(`${API_BASE_URL}/audit/${modelId}`, { headers: getAuthHeaders(), cache: "no-store" });
+  const res = await fetch(`${getApiBaseUrl()}/audit/${modelId}`, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch audit report");
   return res.json();
 }
 
 export async function orchestrateDAG(goal: string, userId?: string, maxBudgetCredits?: number) {
-  const res = await fetch(`${API_BASE_URL}/orchestrate`, {
+  const res = await fetch(`${getApiBaseUrl()}/orchestrate`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
@@ -43,13 +54,13 @@ export async function orchestrateDAG(goal: string, userId?: string, maxBudgetCre
 }
 
 export async function fetchCreators() {
-  const res = await fetch(`${API_BASE_URL}/creators`, { headers: getAuthHeaders(), cache: "no-store" });
+  const res = await fetch(`${getApiBaseUrl()}/creators`, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch creators");
   return res.json();
 }
 
 export async function fetchCreatorEarnings(creatorId: string) {
-  const res = await fetch(`${API_BASE_URL}/creators/${creatorId}/earnings`, { headers: getAuthHeaders(), cache: "no-store" });
+  const res = await fetch(`${getApiBaseUrl()}/creators/${creatorId}/earnings`, { headers: getAuthHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch creator earnings");
   return res.json();
 }
@@ -60,7 +71,7 @@ export async function requestCreatorPayout(payload: {
   payout_method: string;
   destination_address: string;
 }) {
-  const res = await fetch(`${API_BASE_URL}/creators/payout`, {
+  const res = await fetch(`${getApiBaseUrl()}/creators/payout`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -73,7 +84,7 @@ export async function requestCreatorPayout(payload: {
 }
 
 export async function generateApiKey(name: string = "Production Key") {
-  const res = await fetch(`${API_BASE_URL}/auth/api-keys`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/api-keys`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ name })
@@ -86,7 +97,7 @@ export async function generateApiKey(name: string = "Production Key") {
 }
 
 export async function deleteApiKey(keyId: string) {
-  const res = await fetch(`${API_BASE_URL}/auth/api-keys/${keyId}`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/api-keys/${keyId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
@@ -98,7 +109,7 @@ export async function deleteApiKey(keyId: string) {
 }
 
 export async function checkoutWallet(userId: string, creditsPackage: number, cardLast4: string = "4242") {
-  const res = await fetch(`${API_BASE_URL}/wallet/checkout`, {
+  const res = await fetch(`${getApiBaseUrl()}/wallet/checkout`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ user_id: userId, credits_package: creditsPackage, card_last4: cardLast4 })
@@ -108,7 +119,7 @@ export async function checkoutWallet(userId: string, creditsPackage: number, car
 }
 
 export async function fetchProfileDetails() {
-  const res = await fetch(`${API_BASE_URL}/auth/profile-details`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/profile-details`, {
     headers: getAuthHeaders(),
     cache: "no-store"
   });
@@ -117,7 +128,7 @@ export async function fetchProfileDetails() {
 }
 
 export async function updateProfile(payload: { handle?: string; email?: string; password?: string }) {
-  const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/profile`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -130,7 +141,7 @@ export async function updateProfile(payload: { handle?: string; email?: string; 
 }
 
 export async function purchaseModel(modelId: string) {
-  const res = await fetch(`${API_BASE_URL}/models/${modelId}/purchase`, {
+  const res = await fetch(`${getApiBaseUrl()}/models/${modelId}/purchase`, {
     method: "POST",
     headers: getAuthHeaders()
   });
@@ -142,7 +153,7 @@ export async function purchaseModel(modelId: string) {
 }
 
 export async function testModel(modelId: string) {
-  const res = await fetch(`${API_BASE_URL}/models/${modelId}/test`, {
+  const res = await fetch(`${getApiBaseUrl()}/models/${modelId}/test`, {
     method: "POST",
     headers: getAuthHeaders()
   });
@@ -164,7 +175,7 @@ export async function createModel(payload: {
   price_per_1k?: number;
   purchase_price?: number;
 }) {
-  const res = await fetch(`${API_BASE_URL}/models`, {
+  const res = await fetch(`${getApiBaseUrl()}/models`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -177,7 +188,7 @@ export async function createModel(payload: {
 }
 
 export async function convertToCreator() {
-  const res = await fetch(`${API_BASE_URL}/auth/convert-to-creator`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/convert-to-creator`, {
     method: "POST",
     headers: getAuthHeaders(),
   });
@@ -189,7 +200,7 @@ export async function convertToCreator() {
 }
 
 export async function deleteModel(modelId: string) {
-  const res = await fetch(`${API_BASE_URL}/models/${modelId}`, {
+  const res = await fetch(`${getApiBaseUrl()}/models/${modelId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
@@ -201,7 +212,7 @@ export async function deleteModel(modelId: string) {
 }
 
 export async function updateModel(modelId: string, payload: any) {
-  const res = await fetch(`${API_BASE_URL}/models/${modelId}`, {
+  const res = await fetch(`${getApiBaseUrl()}/models/${modelId}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -214,7 +225,7 @@ export async function updateModel(modelId: string, payload: any) {
 }
 
 export async function fetchCreatorMe() {
-  const res = await fetch(`${API_BASE_URL}/creators/me`, {
+  const res = await fetch(`${getApiBaseUrl()}/creators/me`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -226,7 +237,7 @@ export async function fetchCreatorMe() {
 }
 
 export async function fetchCreatorTransactions() {
-  const res = await fetch(`${API_BASE_URL}/creators/me/transactions`, {
+  const res = await fetch(`${getApiBaseUrl()}/creators/me/transactions`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -239,7 +250,7 @@ export async function fetchCreatorTransactions() {
 
 export async function fetchOAuthUrl(provider: "google" | "github", redirectUri?: string) {
   const queryParam = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : "";
-  const res = await fetch(`${API_BASE_URL}/auth/oauth/${provider}/url${queryParam}`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/oauth/${provider}/url${queryParam}`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -259,7 +270,7 @@ export async function loginWithOAuth(
     user_info?: any;
   }
 ) {
-  const res = await fetch(`${API_BASE_URL}/auth/oauth/${provider}`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/oauth/${provider}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
