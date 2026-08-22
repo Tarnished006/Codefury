@@ -236,3 +236,37 @@ export async function fetchCreatorTransactions() {
   }
   return res.json();
 }
+
+export async function fetchOAuthUrl(provider: "google" | "github", redirectUri?: string) {
+  const queryParam = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : "";
+  const res = await fetch(`${API_BASE_URL}/auth/oauth/${provider}/url${queryParam}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to get OAuth URL" }));
+    throw new Error(err.detail || "Failed to get OAuth URL");
+  }
+  return res.json();
+}
+
+export async function loginWithOAuth(
+  provider: "google" | "github",
+  payload: {
+    code?: string;
+    access_token?: string;
+    role?: string;
+    redirect_uri?: string;
+    user_info?: any;
+  }
+) {
+  const res = await fetch(`${API_BASE_URL}/auth/oauth/${provider}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "OAuth authentication failed" }));
+    throw new Error(err.detail || "OAuth authentication failed");
+  }
+  return res.json();
+}

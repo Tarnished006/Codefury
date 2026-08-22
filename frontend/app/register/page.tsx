@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuthContext } from "@/providers/AuthProvider";
 import { ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
+import OAuthButtons from "@/components/OAuthButtons";
 
 function RegisterForm() {
   const router = useRouter();
@@ -53,7 +54,7 @@ function RegisterForm() {
       <h1 className="font-sans font-extrabold text-2xl text-black tracking-tight mb-1">
         Create Account
       </h1>
-      <p className="font-mono text-xs text-black/50 uppercase mb-8">
+      <p className="font-mono text-xs text-black/50 uppercase mb-6">
         500 inference test credits provisioned automatically upon registration.
       </p>
 
@@ -63,6 +64,25 @@ function RegisterForm() {
           <span>{error}</span>
         </div>
       )}
+
+      {/* ── Social OAuth Handshake ── */}
+      <div className="mb-6">
+        <OAuthButtons
+          redirectUrl={redirectUrl}
+          role={role}
+          onError={(err) => setError(err)}
+          onStart={() => setError(null)}
+        />
+
+        <div className="relative my-6 text-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-black/10" />
+          </div>
+          <span className="relative bg-white px-3 text-[10px] font-mono uppercase text-black/40 tracking-wider">
+            OR REGISTER WITH EMAIL
+          </span>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

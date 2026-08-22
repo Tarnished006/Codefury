@@ -79,6 +79,7 @@ export default function CreatorPage() {
   const [editPurchasePrice, setEditPurchasePrice] = useState(100.0);
   const [editIsOnline, setEditIsOnline] = useState(true);
   const [editLoading, setEditLoading] = useState(false);
+  const [deletingModelId, setDeletingModelId] = useState<string | null>(null);
 
   // Payout Form State
   const [payoutAmount, setPayoutAmount] = useState(100);
@@ -158,17 +159,6 @@ export default function CreatorPage() {
     }
   };
 
-  const handleDeleteModel = async (modelId: string) => {
-    if (!window.confirm("Are you sure you want to delete this model? This action is irreversible.")) return;
-    try {
-      await deleteModel(modelId);
-      alert("Model deleted successfully.");
-      loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete model.");
-    }
-  };
-
   const startEditing = (m: any) => {
     setEditingModel(m);
     setEditName(m.name);
@@ -205,6 +195,23 @@ export default function CreatorPage() {
       alert(err.message || "Failed to update model.");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleDeleteModel = async (modelId: string, modelName?: string) => {
+    const displayName = modelName || modelId;
+    if (!window.confirm(`Are you sure you want to permanently delete model "${displayName}" from AgentHub?\n\nThis will remove the model from the marketplace registry.`)) {
+      return;
+    }
+    setDeletingModelId(modelId);
+    try {
+      await deleteModel(modelId);
+      setMyModels((prev) => prev.filter((m) => m.id !== modelId));
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete model.");
+    } finally {
+      setDeletingModelId(null);
     }
   };
 
@@ -891,10 +898,18 @@ export default function CreatorPage() {
                                   Edit
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteModel(m.id)}
-                                  className="px-3 py-1.5 border border-red-500 text-red-500 text-xs font-mono font-bold uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all"
+                                  onClick={() => handleDeleteModel(m.id, m.name)}
+                                  disabled={deletingModelId === m.id}
+                                  className="px-3 py-1.5 border border-red-500 text-red-500 text-xs font-mono font-bold uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                                 >
-                                  Delete
+                                  {deletingModelId === m.id ? (
+                                    <>
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <span>Deleting...</span>
+                                    </>
+                                  ) : (
+                                    <span>Delete</span>
+                                  )}
                                 </button>
                               </div>
                             </div>

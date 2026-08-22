@@ -10,6 +10,8 @@ export interface User {
   role?: string;
   credits: number;
   creator_id?: string;
+  oauth_provider?: string;
+  avatar_url?: string;
 }
 
 interface AuthContextValue {
@@ -19,6 +21,7 @@ interface AuthContextValue {
   credits: number;
   loading: boolean;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  loginOAuth: (provider: "google" | "github", payload: { code?: string; access_token?: string; role?: string; redirect_uri?: string; user_info?: any }) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, pass: string, handle: string, role?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateCredits: (delta: number) => void;
@@ -269,6 +272,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginOAuth = useCallback(async (
+    provider: "google" | "github",
+    payload: { code?: string; access_token?: string; role?: string; redirect_uri?: string; user_info?: any }
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/auth/oauth/${provider}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        let errMsg = "OAuth authentication failed.";
+        if (typeof errData.detail === "string") {
+          errMsg = errData.detail;
+        } else if (Array.isArray(errData.detail)) {
+          errMsg = errData.detail.map((e: any) => e.msg || JSON.stringify(e)).join("; ");
+        } else if (errData.detail && typeof errData.detail === "object") {
+          errMsg = JSON.stringify(errData.detail);
+        }
+        return { success: false, error: errMsg };
+      }
+      const data = await res.json();
+      setToken(data.access_token);
+      setAuthCookie(data.access_token);
+      const u: User = {
+        id: data.user.id,
+        email: data.user.email,
+        handle: data.user.handle,
+        role: data.user.role,
+        credits: round2(data.user.credits),
+        creator_id: data.user.creator_id,
+        oauth_provider: data.user.oauth_provider,
+        avatar_url: data.user.avatar_url,
+      };
+      setUser(u);
+      setCredits(round2(data.user.credits));
+      localStorage.setItem("agenthub_token", data.access_token);
+      localStorage.setItem("agenthub_user", JSON.stringify(u));
+      return { success: true };
+    } catch {
+      return { success: false, error: "API connection failed. Verify backend is running." };
+    }
+  }, []);
+
   const updateCredits = (delta: number) => {
     setCredits((prev) => {
       const next = Math.max(0, round2(prev + delta));
@@ -294,6 +342,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credits,
         loading,
         login,
+        loginOAuth,
         register,
         logout,
         updateCredits,

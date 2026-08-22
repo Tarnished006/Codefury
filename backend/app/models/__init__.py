@@ -8,10 +8,13 @@ class User(Base):
     
     id = Column(String(36), primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True) # Optional for OAuth users
     handle = Column(String(100), unique=True, index=True, nullable=False)
     role = Column(String(50), default="developer")
     is_active = Column(Boolean, default=True)
+    oauth_provider = Column(String(50), nullable=True) # "google", "github", or None for email
+    oauth_id = Column(String(255), nullable=True, index=True)
+    avatar_url = Column(String(512), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     wallet = relationship("Wallet", back_populates="user", uselist=False, cascade="all, delete-orphan")

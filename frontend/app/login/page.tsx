@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
+import OAuthButtons from "@/components/OAuthButtons";
 
 function LoginForm() {
   const router = useRouter();
@@ -58,7 +59,7 @@ function LoginForm() {
   return (
     <div className="border border-black/10 bg-white p-8">
       {/* ── Brand Title ── */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h1 className="font-sans font-extrabold text-2xl text-black tracking-tight mb-1">
           {mode === "login" ? "Sign In to AgentNet" : "Create Developer Account"}
         </h1>
@@ -73,6 +74,24 @@ function LoginForm() {
           <span>{error}</span>
         </div>
       )}
+
+      {/* ── Social OAuth Handshake ── */}
+      <div className="mb-6">
+        <OAuthButtons
+          redirectUrl={redirectUrl}
+          onError={(err) => setError(err)}
+          onStart={() => setError(null)}
+        />
+
+        <div className="relative my-6 text-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-black/10" />
+          </div>
+          <span className="relative bg-white px-3 text-[10px] font-mono uppercase text-black/40 tracking-wider">
+            OR CONTINUE WITH EMAIL
+          </span>
+        </div>
+      </div>
 
       {/* ── Credential Form ── */}
       <form onSubmit={handleSubmit} className="space-y-4">

@@ -13,6 +13,19 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class OAuthLoginRequest(BaseModel):
+    provider: Optional[str] = Field(None, description="'google' or 'github'")
+    code: Optional[str] = Field(None, description="OAuth authorization code")
+    access_token: Optional[str] = Field(None, description="Direct OAuth access token")
+    role: Optional[str] = "developer"
+    redirect_uri: Optional[str] = None
+    user_info: Optional[Dict[str, Any]] = None
+
+class OAuthUrlResponse(BaseModel):
+    provider: str
+    auth_url: str
+    client_id: Optional[str] = None
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -26,6 +39,8 @@ class UserResponse(BaseModel):
     credits: float
     created_at: datetime
     creator_id: Optional[str] = None
+    oauth_provider: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 # --- Creator & Marketplace Schemas ---
 class CreatorBase(BaseModel):

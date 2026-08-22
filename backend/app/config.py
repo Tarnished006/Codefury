@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     STRIPE_SUCCESS_URL: str = "http://localhost:3000/wallet?status=success&session_id={CHECKOUT_SESSION_ID}"
     STRIPE_CANCEL_URL: str = "http://localhost:3000/wallet?status=cancelled"
     
+    # OAuth Credentials (Google & GitHub)
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: str = "http://localhost:3000/auth/callback"
+    
+    GITHUB_CLIENT_ID: Optional[str] = None
+    GITHUB_CLIENT_SECRET: Optional[str] = None
+    GITHUB_REDIRECT_URI: str = "http://localhost:3000/auth/callback"
+    
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file=[str(f) for f in _env_files if f.exists()],

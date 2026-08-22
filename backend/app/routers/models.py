@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import delete
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db, AsyncSessionLocal
-from app.models import AIModel, Deployment, User, Wallet, Creator, LedgerTransaction, PurchasedModel, TestedModel
+from app.models import AIModel, Deployment, User, Wallet, Creator, LedgerTransaction, PurchasedModel, TestedModel, OWASPAudit
 from app.schemas import AIModelResponse, AIModelCreate, AIModelUpdate, ModelInferenceRequest
 from app.services import hf_service
 from app.services.ledger_service import ledger_service
@@ -398,7 +399,7 @@ async def delete_model(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Allows creators to delete their published model."""
+    """Allows creators to delete their published model and clean up references."""
     result = await db.execute(select(AIModel).filter(AIModel.id == model_id))
     model = result.scalars().first()
     if not model:
@@ -406,9 +407,23 @@ async def delete_model(
         
     c_res = await db.execute(select(Creator).filter(Creator.user_id == current_user.id))
     creator = c_res.scalars().first()
-    if not creator or model.creator_id != creator.id:
+    
+    is_owner = False
+    if creator and model.creator_id == creator.id:
+        is_owner = True
+    elif model.creator_id in (current_user.id, f"creator_{current_user.id}"):
+        is_owner = True
+    elif current_user.role == "creator" and creator and model.creator_id == creator.id:
+        is_owner = True
+
+    if not is_owner:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this model")
         
-    await db.delete(model)
+    # Clean up any child references to prevent SQLite FK constraint errors
+    await db.execute(delete(PurchasedModel).filter(PurchasedModel.model_id == model_id))
+    await db.execute(delete(TestedModel).filter(TestedModel.model_id == model_id))
+    await db.execute(delete(Deployment).filter(Deployment.model_id == model_id))
+    await db.execute(delete(OWASPAudit).filter(OWASPAudit.model_id == model_id))
+    await db.execute(delete(AIModel).filter(AIModel.id == model_id))
     await db.commit()
     return {"status": "success", "message": f"Model {model_id} deleted successfully"}
