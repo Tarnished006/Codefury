@@ -33,7 +33,7 @@ GROQ_SUPERVISOR = "openai/gpt-oss-120b"
 GROQ_EXECUTOR   = "openai/gpt-oss-20b"
 GROQ_FALLBACK   = "groq/compound"
 
-SUPERVISOR_SYSTEM_PROMPT = """You are the AgentHub Chief Orchestrator — an autonomous AI supervisor.
+SUPERVISOR_SYSTEM_PROMPT = """You are the AgentHub Chief Orchestrator -- an autonomous AI supervisor.
 
 Your mission:
 1. Thoroughly parse the user's goal.
@@ -191,6 +191,21 @@ class DynamicMetaAgentOrchestrator:
             total_tokens=sum(len(s.output or "") // 4 for s in executed_steps) + 100,
             execution_time_ms=exec_time,
         )
+
+    async def run(
+        self,
+        goal: str,
+        user_id: str = "mcp_client",
+        max_budget_credits: Optional[float] = None,
+        db: Optional[AsyncSession] = None,
+    ) -> Dict[str, Any]:
+        """Convenience alias for MCP and external clients."""
+        resp = await self.orchestrate_intent(
+            goal=goal,
+            max_budget_credits=max_budget_credits,
+            db=db
+        )
+        return resp.model_dump() if hasattr(resp, "model_dump") else resp.dict()
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

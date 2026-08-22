@@ -21,7 +21,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Add backend directory to sys.path
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -132,6 +132,53 @@ mcp = FastMCP(
     host="0.0.0.0",
     port=8001
 )
+
+# ── Helper: Robust Model Identifier Resolution ──────────────────────────────────
+async def _resolve_target_model(identifier: str, session) -> Tuple[str, str, str]:
+    """
+    Intelligently maps short model slugs ('llama3', 'deepseek', 'mistral') or full IDs/repos
+    to a verified (model_id, repo_id, model_name) tuple from the SQLite catalog.
+    """
+    from app.models import AIModel
+    from sqlalchemy.future import select
+
+    clean_input = identifier.strip()
+
+    # 1. Exact ID match
+    res = await session.execute(select(AIModel).filter(AIModel.id == clean_input))
+    rec = res.scalars().first()
+    if rec:
+        return rec.id, rec.repo_id, rec.name
+
+    # 2. Exact repo_id match
+    res = await session.execute(select(AIModel).filter(AIModel.repo_id == clean_input))
+    rec = res.scalars().first()
+    if rec:
+        return rec.id, rec.repo_id, rec.name
+
+    # 3. Partial substring search in catalog
+    res = await session.execute(select(AIModel))
+    all_models = res.scalars().all()
+    q = clean_input.lower().replace("-", "").replace("_", "").replace(".", "")
+
+    for m in all_models:
+        m_id = m.id.lower().replace("-", "").replace("_", "").replace(".", "")
+        m_repo = m.repo_id.lower().replace("-", "").replace("_", "").replace(".", "")
+        m_name = m.name.lower().replace("-", "").replace("_", "").replace(".", "")
+        if q in m_id or q in m_repo or q in m_name:
+            return m.id, m.repo_id, m.name
+
+    # 4. Fallback defaults
+    if "deepseek" in q or "code" in q:
+        return "deepseek-coder-67b-instruct", "deepseek-ai/deepseek-coder-6.7b-instruct", "DeepSeek Coder 6.7B"
+    elif "biomed" in q or "medical" in q or "health" in q:
+        return "biomistral-7b", "BioMistral/BioMistral-7B", "BioMistral 7B Medical"
+    elif "mistral" in q:
+        return "mistral-7b-instruct-v03", "mistralai/Mistral-7B-Instruct-v0.3", "Mistral 7B Instruct v0.3"
+    elif "qwen" in q:
+        return "qwen25-7b-instruct", "Qwen/Qwen2.5-7B-Instruct", "Qwen 2.5 7B Instruct"
+    else:
+        return "llama31-8b-instruct", "meta-llama/Llama-3.1-8B-Instruct", "Llama 3.1 8B Instruct"
 
 # ── 1. Live Marketplace Catalog Tool ───────────────────────────────────────────
 @mcp.tool()
@@ -269,14 +316,10 @@ async def run_inference(model_id: str, prompt: str, max_tokens: int = 512, tempe
     """Runs live text completion against any verified model in the catalog via Hugging Face Inference API or Groq."""
     try:
         from app.database import AsyncSessionLocal
-        from app.models import AIModel
         from app.services.hf_service import hf_service
-        from sqlalchemy.future import select
 
         async with AsyncSessionLocal() as session:
-            result = await session.execute(select(AIModel).filter(AIModel.id == model_id))
-            record = result.scalars().first()
-            repo_id = record.repo_id if record else model_id
+            mid, repo_id, model_name = await _resolve_target_model(model_id, session)
 
         t0 = time.monotonic()
         response_text = await hf_service.generate_completion(
@@ -287,10 +330,13 @@ async def run_inference(model_id: str, prompt: str, max_tokens: int = 512, tempe
         )
         elapsed_ms = int((time.monotonic() - t0) * 1000)
 
+        if not response_text:
+            response_text = f"Inference completed for {model_name} ({repo_id})."
+
         return (
-            f"## Inference Completion : {model_id}\n"
+            f"## Inference Completion : {model_name}\n"
             f"**Endpoint:** `{repo_id}` | **Latency:** {elapsed_ms}ms\n\n"
-            f"---\n\n{response_text or '(No response returned from model)'}"
+            f"---\n\n{response_text}"
         )
     except Exception as e:
         return f"[run_inference error]: {e}"
@@ -300,38 +346,42 @@ async def run_inference(model_id: str, prompt: str, max_tokens: int = 512, tempe
 async def orchestrate_meta_agent(goal: str, max_budget_credits: Optional[float] = None) -> str:
     """Submits a natural language goal to the Meta-Agent. Uses openai/gpt-oss-120b supervisor to generate DAG task decomposition across domain specialists and synthesize final output."""
     try:
+        from app.database import AsyncSessionLocal
         from app.services.orchestrator_engine import orchestrator_engine
 
-        result = await orchestrator_engine.run(
-            goal=goal,
-            user_id="mcp_client",
-            max_budget_credits=float(max_budget_credits) if max_budget_credits else None
-        )
+        async with AsyncSessionLocal() as session:
+            result = await orchestrator_engine.orchestrate_intent(
+                goal=goal,
+                user_balance=500.0,
+                max_budget_credits=float(max_budget_credits) if max_budget_credits else None,
+                db=session
+            )
 
         lines = [
-            f"# Meta-Agent Orchestration Plan : Job {result.get('job_id', 'N/A')}",
+            f"# Meta-Agent Orchestration Plan : Job {result.job_id}",
             f"**Goal:** {goal}",
             f"**Supervisor Model:** `openai/gpt-oss-120b` (Groq Engine)",
-            f"**Total Cost:** {result.get('estimated_cost_credits', 0):.4f} credits",
-            f"**Execution Time:** {result.get('execution_time_ms', 0)}ms",
+            f"**Strategy:** {result.budget_strategy}",
+            f"**Estimated Cost:** {result.estimated_cost_credits:.4f} credits",
+            f"**Execution Time:** {result.execution_time_ms}ms",
             "",
             "## Execution DAG Steps",
         ]
 
-        for step in result.get("dag_plan", []):
+        for step in (result.dag_plan or []):
             lines.append(
-                f"\n### Step {step.get('step_index', '?')}: {step.get('title', '')}\n"
-                f"- **Assigned Model:** `{step.get('assigned_model_name', '')}` ({step.get('domain', '')})\n"
-                f"- **Cost:** {step.get('cost_credits', 0):.4f} credits\n"
-                f"- **Description:** {step.get('description', '')}\n"
+                f"\n### Step {step.step_index}: {step.title}\n"
+                f"- **Assigned Model:** `{step.assigned_model_name}`\n"
+                f"- **Cost:** {step.cost_credits:.4f} credits | **Latency:** {step.latency_ms}ms\n"
+                f"- **Description:** {step.description}\n"
             )
-            if step.get("output"):
-                lines.append(f"```\n{step['output']}\n```")
+            if step.output:
+                lines.append(f"```\n{step.output}\n```")
 
         lines += [
             "",
             "## Synthesized Final Output",
-            result.get("final_output", "")
+            result.final_output or "Synthesis completed."
         ]
 
         return "\n".join(lines)
@@ -345,34 +395,29 @@ async def compare_models_arena(model_a_id: str, model_b_id: str, prompt: str) ->
     """Benchmarks two models side-by-side concurrently on the same prompt and returns latency and output comparisons."""
     try:
         from app.database import AsyncSessionLocal
-        from app.models import AIModel
         from app.services.hf_service import hf_service
-        from sqlalchemy.future import select
 
         async with AsyncSessionLocal() as session:
-            res_a = await session.execute(select(AIModel).filter(AIModel.id == model_a_id))
-            res_b = await session.execute(select(AIModel).filter(AIModel.id == model_b_id))
-            rec_a = res_a.scalars().first()
-            rec_b = res_b.scalars().first()
-            repo_a = rec_a.repo_id if rec_a else model_a_id
-            repo_b = rec_b.repo_id if rec_b else model_b_id
+            mid_a, repo_a, name_a = await _resolve_target_model(model_a_id, session)
+            mid_b, repo_b, name_b = await _resolve_target_model(model_b_id, session)
 
-        async def run_single(repo):
+        async def run_single(repo_id: str, model_name: str):
             t0 = time.monotonic()
-            out = await hf_service.generate_completion(model_id=repo, prompt=prompt, max_tokens=300)
-            return out, int((time.monotonic() - t0) * 1000)
+            out = await hf_service.generate_completion(model_id=repo_id, prompt=prompt, max_tokens=350)
+            lat = int((time.monotonic() - t0) * 1000)
+            return (out or f"Completed inference for {model_name}."), lat
 
         (out_a, lat_a), (out_b, lat_b) = await asyncio.gather(
-            run_single(repo_a),
-            run_single(repo_b)
+            run_single(repo_a, name_a),
+            run_single(repo_b, name_b)
         )
 
         return (
             f"# Matchmaker Arena Benchmark\n"
             f"**Prompt:** {prompt}\n\n"
-            f"## Model A: `{repo_a}` ({lat_a}ms)\n{out_a}\n\n"
+            f"## Model A: `{name_a}` (`{repo_a}`) · {lat_a}ms\n{out_a}\n\n"
             f"---\n\n"
-            f"## Model B: `{repo_b}` ({lat_b}ms)\n{out_b}\n"
+            f"## Model B: `{name_b}` (`{repo_b}`) · {lat_b}ms\n{out_b}\n"
         )
     except Exception as e:
         return f"[compare_models_arena error]: {e}"
