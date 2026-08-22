@@ -15,6 +15,7 @@ from app.routers import (
     registry_router,
     recommendations_router,
     assistant_router,
+    gateway_router,
 )
 
 @asynccontextmanager
@@ -58,6 +59,10 @@ app.include_router(creators_router, prefix=settings.API_V1_STR)
 app.include_router(registry_router, prefix=settings.API_V1_STR)
 app.include_router(recommendations_router, prefix=settings.API_V1_STR)
 app.include_router(assistant_router, prefix=settings.API_V1_STR)
+
+# Mount OpenAI-Compatible Gateway at both root (/v1) and api prefix (/api/v1)
+app.include_router(gateway_router)
+app.include_router(gateway_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():

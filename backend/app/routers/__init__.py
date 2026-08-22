@@ -9,3 +9,4 @@ from app.routers.creators import router as creators_router
 from app.routers.registry import router as registry_router
 from app.routers.recommendations import router as recommendations_router
 from app.routers.assistant import router as assistant_router
+from app.routers.gateway import router as gateway_router

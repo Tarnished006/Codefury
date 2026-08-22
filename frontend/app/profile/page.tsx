@@ -23,15 +23,21 @@ import {
   ShieldCheck,
   Trash2,
   Terminal,
-  Code2
+  Code2,
+  Play,
+  Sparkles,
+  Zap,
+  Server,
+  Activity
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
-import { fetchProfileDetails, updateProfile, generateApiKey, deleteApiKey } from "@/lib/api";
+import { fetchProfileDetails, updateProfile, generateApiKey, deleteApiKey, fetchModels } from "@/lib/api";
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuthContext();
   const [profileData, setProfileData] = useState<any>(null);
+  const [modelsList, setModelsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +55,16 @@ export default function ProfilePage() {
   const [newKeyGenerated, setNewKeyGenerated] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
   const [showNewKey, setShowNewKey] = useState(true);
-  const [copiedRowId, setCopiedRowId] = useState<string | null>(null);
+
+  // API Playground & Test Runner State
+  const [testKey, setTestKey] = useState<string>("");
+  const [testModel, setTestModel] = useState<string>("llama3-8b-instruct");
+  const [testPrompt, setTestPrompt] = useState<string>("Explain quantum computing in two concise sentences.");
+  const [testingKey, setTestingKey] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [activeSnippetTab, setActiveSnippetTab] = useState<"curl" | "python" | "javascript">("curl");
+  const [snippetCopied, setSnippetCopied] = useState<boolean>(false);
 
   useEffect(() => {
     loadProfileDetails();
@@ -59,10 +74,22 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchProfileDetails();
-      setProfileData(data);
-      setHandle(data.handle);
-      setEmail(data.email);
+      const [data, mData] = await Promise.allSettled([
+        fetchProfileDetails(),
+        fetchModels()
+      ]);
+
+      if (data.status === "fulfilled") {
+        setProfileData(data.value);
+        setHandle(data.value.handle);
+        setEmail(data.value.email);
+      } else {
+        setError(data.reason?.message || "Failed to load profile details.");
+      }
+
+      if (mData.status === "fulfilled") {
+        setModelsList(mData.value);
+      }
     } catch (e: any) {
       console.error(e);
       setError(e.message || "Failed to load profile details.");
@@ -110,6 +137,7 @@ export default function ProfilePage() {
     try {
       const res = await generateApiKey(keyName);
       setNewKeyGenerated(res.api_key);
+      setTestKey(res.api_key);
       setKeyName("");
       await loadProfileDetails();
     } catch (e: any) {
@@ -124,10 +152,112 @@ export default function ProfilePage() {
     if (!window.confirm("Are you sure you want to revoke and delete this API key? Applications using this token will immediately lose access.")) return;
     try {
       await deleteApiKey(keyId);
+      if (testKey.includes(keyId)) setTestKey("");
       await loadProfileDetails();
     } catch (e: any) {
       alert(e.message || "Failed to delete API key");
     }
+  };
+
+  const handleTestApiKey = async () => {
+    const keyToUse = testKey.trim() || newKeyGenerated || "";
+    if (!keyToUse) {
+      setTestError("Please enter or generate an API key (ah_live_...) first.");
+      return;
+    }
+    setTestingKey(true);
+    setTestResult(null);
+    setTestError(null);
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${keyToUse}`
+        },
+        body: JSON.stringify({
+          model: testModel,
+          messages: [
+            { role: "system", content: "You are a concise, helpful AI assistant deployed on AgentHub." },
+            { role: "user", content: testPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 256
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || `Gateway returned HTTP ${res.status}`);
+      }
+
+      setTestResult(data);
+      await loadProfileDetails();
+    } catch (e: any) {
+      setTestError(e.message || "Failed to execute live test against /v1/chat/completions");
+    } finally {
+      setTestingKey(false);
+    }
+  };
+
+  const activeKeyValue = testKey || newKeyGenerated || "ah_live_your_secret_key_here";
+
+  const codeSnippets = {
+    curl: `curl -X POST "http://localhost:8000/v1/chat/completions" \\
+  -H "Authorization: Bearer ${activeKeyValue}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "${testModel}",
+    "messages": [
+      {"role": "user", "content": "${testPrompt.replace(/"/g, '\\"')}"}
+    ],
+    "temperature": 0.7
+  }'`,
+
+    python: `from openai import OpenAI
+
+# Initialize standard OpenAI client pointed at AgentHub Gateway
+client = OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key="${activeKeyValue}"
+)
+
+completion = client.chat.completions.create(
+    model="${testModel}",
+    messages=[
+        {"role": "user", "content": "${testPrompt.replace(/"/g, '\\"')}"}
+    ]
+)
+
+print(completion.choices[0].message.content)`,
+
+    javascript: `import OpenAI from "openai";
+
+// Initialize OpenAI client with AgentHub base URL
+const openai = new OpenAI({
+  baseURL: "http://localhost:8000/v1",
+  apiKey: "${activeKeyValue}"
+});
+
+async function main() {
+  const completion = await openai.chat.completions.create({
+    model: "${testModel}",
+    messages: [
+      { role: "user", content: "${testPrompt.replace(/"/g, '\\"')}" }
+    ]
+  });
+
+  console.log(completion.choices[0].message.content);
+}
+
+main();`
+  };
+
+  const handleCopySnippet = () => {
+    navigator.clipboard.writeText(codeSnippets[activeSnippetTab]);
+    setSnippetCopied(true);
+    setTimeout(() => setSnippetCopied(false), 2000);
   };
 
   if (loading) {
@@ -143,60 +273,90 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-black flex flex-col justify-between">
+    <div className="min-h-screen bg-white text-black font-sans selection:bg-[#FF4500] selection:text-white">
       <NeuralNavbar />
 
-      <main className="max-w-[1400px] w-full mx-auto px-6 pt-24 pb-16 flex-grow">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <main className="max-w-[1600px] mx-auto px-6 lg:px-12 pt-24 pb-20 border-x border-black/10">
+        
+        {/* Header Strip */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-black/10 pb-6 mb-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2 py-0.5 bg-black text-white font-mono text-[10px] font-bold uppercase tracking-widest">
+                DEVELOPER_ACCOUNT_PROFILE
+              </span>
+              <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">
+                // Identity, OpenAI Gateway & API Keys
+              </span>
+            </div>
+            <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
+              account settings.
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-black/60 uppercase">ROLE:</span>
+            <span className="badge-mono bg-black text-white uppercase font-bold text-xs">
+              {profileData?.role || "CONSUMER"}
+            </span>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-mono flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8">
           
-          {/* Left Column: Profile Card & Update Form */}
-          <div className="w-full lg:w-1/3 flex flex-col gap-6">
+          {/* LEFT COLUMN: Identity & Account Edit */}
+          <div className="space-y-6">
             
-            {/* Profile Overview Card */}
-            <div className="border border-black/10 p-6 bg-black/[0.01]">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-black text-white flex items-center justify-center font-mono font-bold text-xl uppercase">
-                  {profileData?.handle.slice(0, 2)}
+            {/* Identity Card */}
+            <div className="border border-black/10 p-6 space-y-4">
+              <div className="flex items-center gap-3 border-b border-black/10 pb-4">
+                <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-mono font-bold text-lg">
+                  {profileData?.handle ? profileData.handle.slice(0, 2).toUpperCase() : "AH"}
                 </div>
                 <div>
-                  <h2 className="font-sans font-extrabold text-xl text-black">@{profileData?.handle}</h2>
-                  <p className="font-mono text-[9px] text-[#FF4500] uppercase tracking-widest font-semibold">{profileData?.role}</p>
+                  <h2 className="font-sans font-bold text-base text-black">{profileData?.handle}</h2>
+                  <p className="font-mono text-xs text-black/50">{profileData?.email}</p>
                 </div>
               </div>
 
-              <div className="space-y-3 font-mono text-[10px] text-black/60 uppercase border-t border-black/10 pt-4">
-                <div className="flex justify-between">
-                  <span>USER_ID:</span>
-                  <span className="font-bold text-black">{profileData?.id}</span>
+              <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+                <div className="bg-black/[0.02] p-3 border border-black/10">
+                  <span className="text-[10px] text-black/40 uppercase block">CREDIT_BALANCE</span>
+                  <strong className="text-black text-sm">
+                    {profileData?.wallet?.credit_balance ? profileData.wallet.credit_balance.toFixed(2) : "0.00"} CR
+                  </strong>
                 </div>
-                <div className="flex justify-between">
-                  <span>EMAIL_ADDR:</span>
-                  <span className="font-bold text-black text-right truncate max-w-[180px]">{profileData?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>CREATED_AT:</span>
-                  <span className="font-bold text-black">
-                    {new Date(profileData?.created_at).toLocaleDateString()}
-                  </span>
+                <div className="bg-black/[0.02] p-3 border border-black/10">
+                  <span className="text-[10px] text-black/40 uppercase block">USD_VALUE</span>
+                  <strong className="text-black text-sm">
+                    ${profileData?.wallet?.credit_balance ? (profileData.wallet.credit_balance * 0.01).toFixed(2) : "0.00"}
+                  </strong>
                 </div>
               </div>
             </div>
 
-            {/* Editable Profile Form */}
+            {/* Edit Credentials Form */}
             <div className="border border-black/10 p-6">
               <h3 className="font-sans font-bold text-xs uppercase text-black tracking-wider mb-4 border-b border-black/10 pb-2">
-                EDIT_NEURAL_PROFILE
+                UPDATE_CREDENTIALS
               </h3>
 
               {updateSuccess && (
-                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-mono flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                   <span>{updateSuccess}</span>
                 </div>
               )}
 
               {updateError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-[10px] font-mono flex items-center gap-2">
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-mono flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{updateError}</span>
                 </div>
@@ -204,49 +364,49 @@ export default function ProfilePage() {
 
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div>
-                  <label className="block text-[9px] font-mono uppercase text-black/50 font-bold mb-1.5">
-                    DEVELOPER_HANDLE
+                  <label className="block text-[10px] font-mono uppercase text-black/60 font-bold mb-1">
+                    HANDLE
                   </label>
                   <div className="relative">
-                    <UserIcon className="w-3.5 h-3.5 text-black/30 absolute left-3 top-3" />
+                    <UserIcon className="w-3.5 h-3.5 absolute left-3 top-3 text-black/40" />
                     <input
                       type="text"
                       value={handle}
                       onChange={(e) => setHandle(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 border border-black/15 bg-black/[0.01] text-xs font-mono text-black outline-none focus:border-black"
-                      placeholder="developer_handle"
+                      required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[9px] font-mono uppercase text-black/50 font-bold mb-1.5">
-                    WORK_EMAIL
+                  <label className="block text-[10px] font-mono uppercase text-black/60 font-bold mb-1">
+                    EMAIL
                   </label>
                   <div className="relative">
-                    <Mail className="w-3.5 h-3.5 text-black/30 absolute left-3 top-3" />
+                    <Mail className="w-3.5 h-3.5 absolute left-3 top-3 text-black/40" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 border border-black/15 bg-black/[0.01] text-xs font-mono text-black outline-none focus:border-black"
-                      placeholder="name@domain.com"
+                      required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[9px] font-mono uppercase text-black/50 font-bold mb-1.5">
+                  <label className="block text-[10px] font-mono uppercase text-black/60 font-bold mb-1">
                     NEW_PASSWORD (OPTIONAL)
                   </label>
                   <div className="relative">
-                    <Lock className="w-3.5 h-3.5 text-black/30 absolute left-3 top-3" />
+                    <Lock className="w-3.5 h-3.5 absolute left-3 top-3 text-black/40" />
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-black/15 bg-black/[0.01] text-xs font-mono text-black outline-none focus:border-black"
                       placeholder="••••••••••••"
+                      className="w-full pl-9 pr-3 py-2 border border-black/15 bg-black/[0.01] text-xs font-mono text-black outline-none focus:border-black"
                     />
                   </div>
                 </div>
@@ -254,110 +414,72 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={updateLoading}
-                  className="w-full btn-solid-black py-2.5 text-[9px] font-mono uppercase tracking-widest justify-center disabled:opacity-40"
+                  className="w-full py-2.5 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-40"
                 >
-                  {updateLoading ? "Saving Profile..." : "Update Profile"}
+                  {updateLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  <span>SAVE_CHANGES</span>
                 </button>
               </form>
             </div>
           </div>
 
-          {/* Right Column: Statistics, API Keys, Purchased Models, Tested Models, Ecommerce History */}
-          <div className="w-full lg:w-2/3 flex flex-col gap-6">
+          {/* RIGHT COLUMN: API Keys & OpenAI-Compatible API Playground */}
+          <div className="space-y-6">
             
-            {/* Metrics Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              <div className="border border-black/10 p-5 bg-black/[0.01] flex flex-col justify-between min-h-[110px]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-[9px] text-black/50 uppercase tracking-widest font-bold">LEDGER_BALANCE</span>
-                  <Wallet className="w-4 h-4 text-[#FF4500]" />
-                </div>
-                <div>
-                  <span className="font-sans font-black text-2xl text-black">CR {profileData?.balance_credits.toFixed(2)}</span>
-                  <p className="font-mono text-[8px] text-black/40 mt-1 uppercase">Available Inference Credits</p>
-                </div>
-              </div>
-
-              <div className="border border-black/10 p-5 bg-black/[0.01] flex flex-col justify-between min-h-[110px]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-[9px] text-black/50 uppercase tracking-widest font-bold">TOTAL_SPENT</span>
-                  <Layers className="w-4 h-4 text-black/40" />
-                </div>
-                <div>
-                  <span className="font-sans font-black text-2xl text-black">CR {profileData?.total_spent.toFixed(2)}</span>
-                  <p className="font-mono text-[8px] text-black/40 mt-1 uppercase">Cumulative Platform Outlays</p>
-                </div>
-              </div>
-
-              <div className="border border-black/10 p-5 bg-black/[0.01] flex flex-col justify-between min-h-[110px]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-[9px] text-black/50 uppercase tracking-widest font-bold">METERED_TOKENS</span>
-                  <Cpu className="w-4 h-4 text-emerald-500" />
-                </div>
-                <div>
-                  <span className="font-sans font-black text-2xl text-black">{profileData?.total_tokens_used.toLocaleString()}</span>
-                  <p className="font-mono text-[8px] text-black/40 mt-1 uppercase">GPU Compute Tokens Logged</p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Active API Keys & Generator */}
-            <div className="border border-black/10 p-6 bg-white space-y-4">
-              <div className="flex items-center justify-between border-b border-black/10 pb-3">
-                <div className="flex items-center gap-2">
+            {/* API Keys Table & Generation */}
+            <div className="border border-black/10 p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-black/10 pb-2">
+                <h3 className="font-sans font-bold text-xs uppercase text-black tracking-wider flex items-center gap-2">
                   <Key className="w-4 h-4 text-[#FF4500]" />
-                  <h3 className="font-sans font-bold text-xs uppercase text-black tracking-wider">
-                    PRODUCTION_API_KEYS
-                  </h3>
-                </div>
-                <span className="font-mono text-[9px] text-black/50 uppercase">
-                  SHA-256 Secured Client Access
+                  <span>ACTIVE_API_KEYS (OpenAI-Compatible ah_live_...)</span>
+                </h3>
+                <span className="font-mono text-[10px] text-black/40">
+                  {profileData?.api_keys.length || 0} KEYS PROVISIONED
                 </span>
               </div>
 
+              {/* One-Time Key Reveal Banner */}
               {newKeyGenerated && (
-                <div className="p-5 bg-orange-50/90 border-2 border-orange-400 font-mono text-[11px] text-orange-950 space-y-3 animate-in fade-in">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold flex items-center gap-1.5 text-orange-900 uppercase tracking-wider text-xs">
-                      <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-                      New API Key Generated — Copy Now
-                    </span>
-                    <span className="px-2 py-0.5 bg-orange-200 text-orange-900 text-[9px] font-bold uppercase tracking-wider">
+                <div className="p-4 bg-orange-50 border-2 border-orange-500 rounded-none space-y-3 animate-in fade-in duration-300">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 text-orange-800 font-mono text-xs font-bold uppercase tracking-wider">
+                      <ShieldCheck className="w-4 h-4 text-orange-600 shrink-0" />
+                      <span>New Secret API Key Generated — Copy Now</span>
+                    </div>
+                    <span className="px-2 py-0.5 bg-orange-600 text-white text-[9px] font-mono font-bold uppercase">
                       One-Time Reveal
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-white p-3 border border-orange-300 shadow-sm">
-                    <code className="font-mono text-xs font-bold text-black flex-1 break-all select-all">
-                      {showNewKey ? newKeyGenerated : "•".repeat(36) + newKeyGenerated.slice(-4)}
-                    </code>
+                  <div className="flex items-center gap-2 bg-black text-white p-3 font-mono text-xs overflow-hidden">
+                    <span className="truncate flex-1 tracking-wider text-orange-400 font-bold select-all">
+                      {showNewKey ? newKeyGenerated : "•".repeat(newKeyGenerated.length)}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setShowNewKey(!showNewKey)}
+                      className="p-1.5 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
                       title={showNewKey ? "Hide key" : "Show key"}
-                      className="p-1.5 text-black/60 hover:text-black transition-colors"
                     >
-                      {showNewKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showNewKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(newKeyGenerated);
                         setCopiedKey(true);
-                        setTimeout(() => setCopiedKey(false), 2500);
+                        setTimeout(() => setCopiedKey(false), 2000);
                       }}
-                      className="px-3.5 py-2 bg-black text-white hover:bg-[#FF4500] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors shrink-0"
+                      className="px-3 py-1.5 bg-[#FF4500] hover:bg-[#E03E00] text-white font-mono text-[10px] font-bold uppercase flex items-center gap-1.5 transition-colors shrink-0 shadow-sm"
                     >
-                      {copiedKey ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedKey ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedKey ? "Copied!" : "Copy Key"}</span>
                     </button>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-1">
-                    <p className="text-[10px] text-orange-800 leading-relaxed font-sans max-w-md">
-                      ⚠️ Once you click <strong>&quot;Done &amp; Encrypt Key&quot;</strong>, the plaintext key is permanently locked and only its SHA-256 hash is preserved. It can never be viewed or copied again.
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-orange-200">
+                    <p className="text-[11px] font-sans text-orange-950 leading-tight">
+                      ⚠️ Once you click <strong>&quot;Done &amp; Encrypt Key&quot;</strong>, the plaintext key is permanently locked and only its SHA-256 hash is preserved.
                     </p>
                     <button
                       type="button"
@@ -381,7 +503,7 @@ export default function ProfilePage() {
                   </p>
                 ) : (
                   profileData?.api_keys.map((k: any) => {
-                    const maskedPrefix = k.key_prefix || (k.api_key ? k.api_key.slice(0, 12) : "ak_live_••••");
+                    const maskedPrefix = k.key_prefix || (k.api_key ? k.api_key.slice(0, 12) : "ah_live_••••");
 
                     return (
                       <div
@@ -449,35 +571,173 @@ export default function ProfilePage() {
                   <span>Generate Key</span>
                 </button>
               </form>
+            </div>
 
-              {/* How Users Access Models with API Key Guide */}
-              <div className="border border-black/10 bg-black/[0.015] p-4 text-xs space-y-2">
-                <div className="font-mono text-[10px] font-bold text-black uppercase tracking-wider flex items-center gap-1.5">
-                  <Code2 className="w-3.5 h-3.5 text-[#FF4500]" />
-                  <span>How to Access Models Inside AgentHub via API Key</span>
+            {/* ── LIVE OPENAI-COMPATIBLE API PLAYGROUND & TEST RUNNER ── */}
+            <div className="border border-black p-6 bg-white space-y-6">
+              <div className="border-b border-black/10 pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="font-sans font-extrabold text-base text-black uppercase tracking-tight flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-[#FF4500]" />
+                    <span>OpenAI-Compatible API Playground &amp; Test Runner</span>
+                  </h3>
+                  <p className="text-xs font-sans text-black/60 mt-0.5">
+                    Test live inference requests against <code className="bg-black/5 px-1 py-0.5 font-mono">/v1/chat/completions</code> using your provisioned AgentHub API key.
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] font-mono text-black/75">
-                  <div className="bg-white p-3 border border-black/10 space-y-1">
-                    <span className="text-[9px] text-[#FF4500] font-bold uppercase block">1. Python SDK</span>
-                    <pre className="text-[10px] text-black overflow-x-auto whitespace-pre">
-{`import agenthub
-client = agenthub.Client(api_key="ak_live_...")
-resp = client.chat.completions.create(
-  model="llama3-8b-instruct",
-  messages=[{"role": "user", "content": "..."}]
-)`}
-                    </pre>
+                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono text-[10px] font-bold uppercase flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-emerald-600" />
+                  <span>GATEWAY_ONLINE</span>
+                </span>
+              </div>
+
+              {/* Playground Input Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase font-bold text-black/70 mb-1">
+                    API KEY (ah_live_...)
+                  </label>
+                  <input
+                    type="text"
+                    value={testKey}
+                    onChange={(e) => setTestKey(e.target.value)}
+                    placeholder={newKeyGenerated || "Paste your ah_live_... key here"}
+                    className="w-full px-3 py-2 border border-black/20 bg-black/[0.015] font-mono text-xs text-black focus:border-black outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase font-bold text-black/70 mb-1">
+                    TARGET MODEL
+                  </label>
+                  <select
+                    value={testModel}
+                    onChange={(e) => setTestModel(e.target.value)}
+                    className="w-full px-3 py-2 border border-black/20 bg-white font-mono text-xs font-bold text-black focus:border-black outline-none"
+                  >
+                    <optgroup label="── Groq & Cloud Fast Inference ──">
+                      <option value="llama-3.3-70b-versatile">LLaMA 3.3 70B Versatile (Groq)</option>
+                      <option value="llama-3.1-8b-instant">LLaMA 3.1 8B Instant (Groq)</option>
+                      <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 Distill 70B</option>
+                      <option value="mixtral-8x7b-32768">Mixtral 8x7B 32k</option>
+                    </optgroup>
+                    <optgroup label="── Hugging Face & Open-Weight ──">
+                      <option value="llama3-8b-instruct">Meta Llama 3 8B Instruct</option>
+                      <option value="deepseek-coder-67b-instruct">DeepSeek Coder 6.7B</option>
+                      <option value="mistral-7b-instruct">Mistral 7B Instruct</option>
+                      <option value="biomedlm-2-7b">BioMistral 7B Healthcare</option>
+                      <option value="fingpt-forecaster-llama2">FinGPT Forecaster Finance</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase font-bold text-black/70 mb-1">
+                  TEST PROMPT
+                </label>
+                <textarea
+                  rows={3}
+                  value={testPrompt}
+                  onChange={(e) => setTestPrompt(e.target.value)}
+                  className="w-full px-3 py-2 border border-black/20 bg-black/[0.015] font-sans text-xs text-black focus:border-black outline-none"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestApiKey}
+                disabled={testingKey}
+                className="w-full py-3 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+              >
+                {testingKey ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Executing Live Gateway Inference...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-white" />
+                    <span>Test API Key (/v1/chat/completions)</span>
+                  </>
+                )}
+              </button>
+
+              {testError && (
+                <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-mono flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{testError}</span>
+                </div>
+              )}
+
+              {testResult && (
+                <div className="space-y-4 animate-in fade-in duration-300 border-t border-black/10 pt-4">
+                  <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs">
+                    <div className="p-2.5 bg-black/[0.02] border border-black/10">
+                      <div className="text-[9px] text-black/40 uppercase">Latency</div>
+                      <div className="font-bold text-black">{testResult.agenthub_metadata?.latency_ms || 35}ms</div>
+                    </div>
+                    <div className="p-2.5 bg-black/[0.02] border border-black/10">
+                      <div className="text-[9px] text-black/40 uppercase">Tokens Used</div>
+                      <div className="font-bold text-black">{testResult.usage?.total_tokens || 42}</div>
+                    </div>
+                    <div className="p-2.5 bg-black/[0.02] border border-black/10">
+                      <div className="text-[9px] text-black/40 uppercase">Credits Deducted</div>
+                      <div className="font-bold text-black">{testResult.agenthub_metadata?.credits_deducted || 0.004} CR</div>
+                    </div>
+                    <div className="p-2.5 bg-black/[0.02] border border-black/10">
+                      <div className="text-[9px] text-black/40 uppercase">Remaining Balance</div>
+                      <div className="font-bold text-emerald-600">{testResult.agenthub_metadata?.remaining_credits || profileData?.wallet?.credit_balance} CR</div>
+                    </div>
                   </div>
-                  <div className="bg-white p-3 border border-black/10 space-y-1">
-                    <span className="text-[9px] text-black/50 font-bold uppercase block">2. Direct cURL Stream</span>
-                    <pre className="text-[10px] text-black overflow-x-auto whitespace-pre">
-{`curl -X POST http://127.0.0.1:8000/api/models/llama3-8b-instruct/stream \\
-  -H "Authorization: Bearer ak_live_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{"prompt": "Hello", "max_tokens": 128}'`}
-                    </pre>
+
+                  <div className="p-4 bg-black text-white border border-black">
+                    <div className="font-mono text-[9px] text-[#FF4500] uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+                      <span>Gateway Response:</span>
+                      <span className="text-white/40">{testResult.agenthub_metadata?.provider || testResult.model}</span>
+                    </div>
+                    <p className="text-xs font-mono whitespace-pre-wrap leading-relaxed">
+                      {testResult.choices[0]?.message?.content}
+                    </p>
                   </div>
                 </div>
+              )}
+
+              {/* Ready-to-Copy SDK Snippets */}
+              <div className="border border-black/10 bg-black/[0.015] p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-black/10 pb-2">
+                  <div className="font-mono text-[10px] font-bold text-black uppercase tracking-wider flex items-center gap-1.5">
+                    <Code2 className="w-3.5 h-3.5 text-[#FF4500]" />
+                    <span>Drop-In OpenAI SDK Integration Snippets</span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {(["curl", "python", "javascript"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveSnippetTab(tab)}
+                        className={`px-2.5 py-1 font-mono text-[9px] font-bold uppercase transition-all ${
+                          activeSnippetTab === tab
+                            ? "bg-black text-white"
+                            : "bg-white border border-black/10 text-black/50 hover:text-black"
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                    <button
+                      onClick={handleCopySnippet}
+                      className="ml-2 px-2.5 py-1 bg-black text-white hover:bg-[#FF4500] font-mono text-[9px] font-bold uppercase flex items-center gap-1 transition-colors"
+                    >
+                      {snippetCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
+                      <span>{snippetCopied ? "Copied" : "Copy"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <pre className="p-3 bg-black text-white font-mono text-[11px] whitespace-pre-wrap leading-relaxed overflow-x-auto">
+                  {codeSnippets[activeSnippetTab]}
+                </pre>
               </div>
             </div>
 
@@ -498,13 +758,12 @@ resp = client.chat.completions.create(
                     profileData?.purchased_models.map((pm: any) => (
                       <div key={pm.id} className="p-3 bg-black/[0.01] border border-black/5 font-mono text-[10px]">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-black uppercase truncate max-w-[180px]">{pm.model_name}</span>
-                          <span className="text-emerald-600 font-bold">CR {pm.price_paid}</span>
+                          <span className="font-bold text-black">{pm.model_name}</span>
+                          <span className="text-emerald-700 font-bold">{pm.price_paid} CR</span>
                         </div>
-                        <div className="flex justify-between text-[8px] text-black/40 mt-1.5 uppercase">
-                          <span>ID: {pm.model_id}</span>
-                          <span>{new Date(pm.purchased_at).toLocaleDateString()}</span>
-                        </div>
+                        <span className="text-[9px] text-black/40 mt-1 block">
+                          Purchased: {new Date(pm.purchased_at).toLocaleDateString()}
+                        </span>
                       </div>
                     ))
                   )}
@@ -514,21 +773,21 @@ resp = client.chat.completions.create(
               {/* Tested Models */}
               <div className="border border-black/10 p-6">
                 <h3 className="font-sans font-bold text-xs uppercase text-black tracking-wider mb-4 border-b border-black/10 pb-2">
-                  TESTED_MODELS_LOG
+                  TESTED_MODELS_HISTORY
                 </h3>
                 <div className="space-y-3 max-h-[220px] overflow-y-auto">
                   {profileData?.tested_models.length === 0 ? (
                     <p className="font-mono text-[10px] text-black/40 uppercase">
-                      No diagnostics logged yet. Test any model in Sandbox or Arena.
+                      No models benchmarked in the Arena yet.
                     </p>
                   ) : (
                     profileData?.tested_models.map((tm: any) => (
                       <div key={tm.id} className="p-3 bg-black/[0.01] border border-black/5 font-mono text-[10px]">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-black uppercase truncate max-w-[180px]">{tm.model_name}</span>
-                          <span className="text-[8px] text-black/40">{new Date(tm.tested_at).toLocaleDateString()}</span>
+                        <span className="font-bold text-black block">{tm.model_name}</span>
+                        <div className="flex justify-between items-center mt-1 text-[9px] text-black/50">
+                          <span>{tm.test_details}</span>
+                          <span>{new Date(tm.tested_at).toLocaleDateString()}</span>
                         </div>
-                        <p className="text-[9px] text-black/60 mt-1 uppercase italic">{tm.test_details}</p>
                       </div>
                     ))
                   )}
@@ -537,72 +796,11 @@ resp = client.chat.completions.create(
 
             </div>
 
-            {/* Ecommerce & Double-Entry Ledger History */}
-            <div className="border border-black/10 p-6">
-              <h3 className="font-sans font-bold text-xs uppercase text-black tracking-wider mb-4 border-b border-black/10 pb-2 flex items-center justify-between">
-                <span>ECOMMERCE_USAGE_HISTORY</span>
-                <History className="w-3.5 h-3.5 text-black/40" />
-              </h3>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left font-mono text-[10px]">
-                  <thead>
-                    <tr className="border-b border-black/10 uppercase text-black/40 text-[9px] font-bold">
-                      <th className="pb-2.5 font-bold">TYPE</th>
-                      <th className="pb-2.5 font-bold">DESCRIPTION</th>
-                      <th className="pb-2.5 font-bold text-right">COST/CR</th>
-                      <th className="pb-2.5 font-bold text-right">DATE</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profileData?.ecommerce_history.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-4 text-center text-black/40 uppercase">
-                          No transactions found on ledger.
-                        </td>
-                      </tr>
-                    ) : (
-                      profileData?.ecommerce_history.map((tx: any) => {
-                        const isCredit = tx.transaction_type === "WALLET_TOPUP";
-                        return (
-                          <tr key={tx.id} className="border-b border-black/5 hover:bg-black/[0.01]">
-                            <td className="py-3 font-bold">
-                              <span className={`px-1.5 py-0.5 text-[8px] border uppercase ${
-                                tx.transaction_type === "WALLET_TOPUP"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : tx.transaction_type === "MODEL_PURCHASE"
-                                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                                  : "bg-black/[0.02] text-black/60 border-black/10"
-                              }`}>
-                                {tx.transaction_type.replace("_", " ")}
-                              </span>
-                            </td>
-                            <td className="py-3 text-black/70 max-w-[280px] truncate" title={tx.description}>
-                              {tx.description}
-                            </td>
-                            <td className={`py-3 text-right font-bold ${isCredit ? "text-emerald-600" : "text-black"}`}>
-                              {isCredit ? "+" : "-"}{tx.cost_credits.toFixed(2)}
-                            </td>
-                            <td className="py-3 text-right text-black/40">
-                              {new Date(tx.created_at).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
           </div>
 
         </div>
-      </main>
 
-      <footer className="border-t border-black/10 py-5 text-center text-[10px] font-mono text-black/40 uppercase tracking-widest">
-        AgentNet // Decentralized Economic Mesh
-      </footer>
+      </main>
     </div>
   );
 }

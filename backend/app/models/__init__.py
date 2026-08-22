@@ -176,6 +176,7 @@ class ApiKey(Base):
     name = Column(String(100), default="Default Key")
     key_prefix = Column(String(16), nullable=False)
     hashed_key = Column(String(255), nullable=False)
+    credits_balance = Column(Float, default=100.0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     

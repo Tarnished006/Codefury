@@ -88,9 +88,16 @@ def run_migration():
         print("Adding creator_id to ledger_transactions...")
         c.execute("ALTER TABLE ledger_transactions ADD COLUMN creator_id VARCHAR(64)")
 
+    # 7. api_keys table
+    c.execute("PRAGMA table_info(api_keys)")
+    cols = [row[1] for row in c.fetchall()]
+    if "credits_balance" not in cols:
+        print("Adding credits_balance to api_keys...")
+        c.execute("ALTER TABLE api_keys ADD COLUMN credits_balance FLOAT DEFAULT 100.0")
+
     conn.commit()
     conn.close()
-    print("Comprehensive database migration finished successfully!")
+    print("Database migration completed successfully.")
 
 if __name__ == "__main__":
     run_migration()

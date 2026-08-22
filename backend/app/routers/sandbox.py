@@ -145,7 +145,7 @@ async def generate_api_key_endpoint(
     """
     user_id = current_user.id if current_user else "usr_guest_demo"
 
-    raw_secret = f"ak_live_{uuid.uuid4().hex}{uuid.uuid4().hex[:8]}"
+    raw_secret = f"ah_live_{uuid.uuid4().hex}{uuid.uuid4().hex[:8]}"
     prefix = raw_secret[:12]
     hashed = hashlib.sha256(raw_secret.encode()).hexdigest()
 
@@ -156,6 +156,7 @@ async def generate_api_key_endpoint(
         name=req.name or "Production Key",
         key_prefix=prefix,
         hashed_key=hashed,
+        credits_balance=100.0,
         is_active=True,
         created_at=datetime.datetime.utcnow()
     )
