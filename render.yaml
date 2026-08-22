@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: agentnet-backend
+    runtime: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend"
+    envVars:
+      - key: DEMO_MODE
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: "HS256"
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "10080"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SUCCESS_URL
+        value: "https://your-frontend.vercel.app/wallet?status=success&session_id={CHECKOUT_SESSION_ID}"
+      - key: STRIPE_CANCEL_URL
+        value: "https://your-frontend.vercel.app/wallet?status=cancelled"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: "https://your-frontend.vercel.app/auth/callback"

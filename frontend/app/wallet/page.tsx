@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
+import { getApiBaseUrl } from "@/lib/api";
 
 const PACKAGES = [
   { credits: 500, price: 5, label: "STARTER TIER", desc: "500 GPU inference credits" },
@@ -47,7 +48,7 @@ function WalletContent() {
 
   const loadCreatorEarnings = async (cid: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/creators/${cid}/earnings`);
+      const res = await fetch(`${getApiBaseUrl()}/creators/${cid}/earnings`);
       if (res.ok) {
         const data = await res.json();
         setCreatorEarnings(data);
@@ -60,7 +61,7 @@ function WalletContent() {
   const loadLedger = async () => {
     if (!userId) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/wallet/ledger/${userId}`);
+      const res = await fetch(`${getApiBaseUrl()}/wallet/ledger/${userId}`);
       if (res.ok) {
         const data = await res.json();
         setLedger(data);
@@ -76,7 +77,7 @@ function WalletContent() {
 
     if (status === "success" && sessionId) {
       try {
-        const res = await fetch("http://localhost:8000/api/wallet/verify-session", {
+        const res = await fetch(`${getApiBaseUrl()}/wallet/verify-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session_id: sessionId, user_id: userId }),
@@ -96,7 +97,7 @@ function WalletContent() {
   const handleCheckout = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/wallet/checkout", {
+      const res = await fetch(`${getApiBaseUrl()}/wallet/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

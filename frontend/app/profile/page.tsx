@@ -212,9 +212,12 @@ export default function ProfilePage() {
   };
 
   const activeKeyValue = testKey || newKeyGenerated || "ah_live_your_secret_key_here";
+  const gatewayBaseUrl = (typeof window !== "undefined" && process.env.NEXT_PUBLIC_API_URL 
+    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "") 
+    : "http://localhost:8000");
 
   const codeSnippets = {
-    curl: `curl -X POST "http://localhost:8000/v1/chat/completions" \\
+    curl: `curl -X POST "${gatewayBaseUrl}/v1/chat/completions" \\
   -H "Authorization: Bearer ${activeKeyValue}" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -229,7 +232,7 @@ export default function ProfilePage() {
 
 # Initialize standard OpenAI client pointed at AgentHub Gateway
 client = OpenAI(
-    base_url="http://localhost:8000/v1",
+    base_url="${gatewayBaseUrl}/v1",
     api_key="${activeKeyValue}"
 )
 
@@ -246,7 +249,7 @@ print(completion.choices[0].message.content)`,
 
 // Initialize OpenAI client with AgentHub base URL
 const openai = new OpenAI({
-  baseURL: "http://localhost:8000/v1",
+  baseURL: "${gatewayBaseUrl}/v1",
   apiKey: "${activeKeyValue}"
 });
 

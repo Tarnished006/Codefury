@@ -22,6 +22,25 @@ async def lifespan(app: FastAPI):
     # Initialize SQLite Database schemas on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Auto-seed models if database is empty (essential for Render / fresh cloud deployments)
+    try:
+        from app.database import AsyncSessionLocal
+        from app.models import AIModel
+        from sqlalchemy.future import select
+        async with AsyncSessionLocal() as session:
+            res = await session.execute(select(AIModel))
+            if not res.scalars().first():
+                import sys
+                from pathlib import Path
+                backend_dir = Path(__file__).resolve().parent.parent
+                if str(backend_dir) not in sys.path:
+                    sys.path.insert(0, str(backend_dir))
+                from seed import seed_database
+                await seed_database()
+    except Exception as e:
+        print(f"[Startup Seed Notice]: {e}")
+
     yield
 
 app = FastAPI(

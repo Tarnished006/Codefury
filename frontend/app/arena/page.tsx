@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
-import { fetchModels } from "@/lib/api";
+import { fetchModels, getApiBaseUrl } from "@/lib/api";
 
 const DOMAINS = ["ALL DOMAINS", "LLM CHAT", "CODE GEN", "VISION AI", "HEALTHCARE", "FINANCE"];
 
@@ -169,7 +169,7 @@ export default function ArenaPage() {
 
     const startTime = Date.now();
     try {
-      const res = await fetch("http://localhost:8000/api/arena/stream", {
+      const res = await fetch(`${getApiBaseUrl()}/arena/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, model_ids: [modelA, modelB, modelC], user_id: userId }),
@@ -217,7 +217,7 @@ export default function ArenaPage() {
 
   const handleVote = (modelId: string) => {
     setVotedWinner(modelId);
-    fetch("http://localhost:8000/api/arena/vote", {
+    fetch(`${getApiBaseUrl()}/arena/vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: "arena_session", winner_model_id: modelId }),

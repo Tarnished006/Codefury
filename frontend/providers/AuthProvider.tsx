@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { getApiBaseUrl } from "@/lib/api";
 
 export interface User {
   id: string;
@@ -80,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!savedToken) return;
 
     try {
-      const res = await fetch("http://localhost:8000/api/auth/me", {
+      const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
         headers: { Authorization: `Bearer ${savedToken}` },
       });
       if (res.ok) {
@@ -143,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchBalance = useCallback(async (): Promise<number> => {
     if (!user?.id) return credits;
     try {
-      const res = await fetch(`http://localhost:8000/api/wallet/balance/${user.id}`, {
+      const res = await fetch(`${getApiBaseUrl()}/wallet/balance/${user.id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -160,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const res = await fetch("http://localhost:8000/api/auth/login", {
+      const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password: pass }),
@@ -200,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (email: string, pass: string, handle: string, role: string = "developer"): Promise<{ success: boolean; error?: string }> => {
     try {
-      const res = await fetch("http://localhost:8000/api/auth/register", {
+      const res = await fetch(`${getApiBaseUrl()}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password: pass, handle, role }),
@@ -243,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const savedToken = token || localStorage.getItem("agenthub_token") || localStorage.getItem("agentnet_token");
       if (!savedToken) return { success: false, error: "No active session found." };
 
-      const res = await fetch("http://localhost:8000/api/auth/convert-to-creator", {
+      const res = await fetch(`${getApiBaseUrl()}/auth/convert-to-creator`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -277,7 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     payload: { code?: string; access_token?: string; role?: string; redirect_uri?: string; user_info?: any }
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const res = await fetch(`http://localhost:8000/api/auth/oauth/${provider}`, {
+      const res = await fetch(`${getApiBaseUrl()}/auth/oauth/${provider}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
