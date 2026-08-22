@@ -317,8 +317,14 @@ async def proxy_model_inference(
         model_name = endpoint.model_name
         price_per_1k = endpoint.price_per_1k_tokens
     else:
-        # Check AIModel table
-        m_res = await db.execute(select(AIModel).filter(AIModel.id == req.endpoint_id))
+        # Check AIModel table by ID, Name, or Repo ID
+        m_res = await db.execute(
+            select(AIModel).filter(
+                (AIModel.id == req.endpoint_id) |
+                (AIModel.name == req.endpoint_id) |
+                (AIModel.repo_id == req.endpoint_id)
+            )
+        )
         m_obj = m_res.scalars().first()
         if m_obj:
             target_url = m_obj.repo_id if m_obj.repo_id.startswith("http") else None

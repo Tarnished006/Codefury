@@ -31,7 +31,7 @@ import {
   Sliders
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
-import { executeSandboxSnippet } from "@/lib/api";
+import { executeSandboxSnippet, fetchModels } from "@/lib/api";
 
 // Dynamically load Monaco Editor with zero-SSR hydration issues
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -140,34 +140,38 @@ export default function DeploymentsPage() {
   const [terminalOutput, setTerminalOutput] = useState<string | null>(null);
   const [execMetrics, setExecMetrics]     = useState<any>(null);
 
-  // Registered Endpoints List State
+  // Catalog Models & Registered Endpoints List State
+  const [allModels, setAllModels]         = useState<any[]>([]);
   const [registeredList, setRegisteredList] = useState<any[]>([]);
   const [loadingList, setLoadingList]       = useState(false);
 
   // Proxy Test State
-  const [selectedEndpointId, setSelectedEndpointId] = useState<string>("");
+  const [selectedEndpointId, setSelectedEndpointId] = useState<string>("llama3-8b-instruct");
   const [testPrompt, setTestPrompt]       = useState("Write an idiomatic Python async function with type hints and error handling.");
   const [testingProxy, setTestingProxy]   = useState(false);
   const [proxyOutput, setProxyOutput]     = useState<any>(null);
   const [proxyError, setProxyError]       = useState<string | null>(null);
 
   useEffect(() => {
-    loadRegisteredEndpoints();
+    loadModelsAndEndpoints();
   }, []);
 
-  const loadRegisteredEndpoints = async () => {
+  const loadModelsAndEndpoints = async () => {
     setLoadingList(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/registry/endpoints");
-      if (res.ok) {
-        const data = await res.json();
-        setRegisteredList(data);
-        if (data.length > 0 && !selectedEndpointId) {
-          setSelectedEndpointId(data[0].id);
-        }
+      const [modelsData, regData] = await Promise.allSettled([
+        fetchModels(),
+        fetch("http://127.0.0.1:8000/api/registry/endpoints").then(r => r.ok ? r.json() : [])
+      ]);
+
+      if (modelsData.status === "fulfilled") {
+        setAllModels(modelsData.value);
+      }
+      if (regData.status === "fulfilled") {
+        setRegisteredList(regData.value);
       }
     } catch (e) {
-      console.error("Failed to load registered endpoints", e);
+      console.error("Failed to load models/endpoints", e);
     } finally {
       setLoadingList(false);
     }
@@ -197,9 +201,9 @@ export default function DeploymentsPage() {
     const config = JSON.stringify({
       mcpServers: {
         agenthub: {
-          command: "C:\\Users\\Tharun R Gowda\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+          command: "python",
           args: [
-            "C:\\Users\\Tharun R Gowda\\Desktop\\codefury\\backend\\mcp_server.py",
+            "C:\\Users\\<USER_NAME>\\<PROJECT_FOLDER>\\backend\\mcp_server.py",
             "--transport",
             "stdio"
           ]
@@ -220,7 +224,7 @@ export default function DeploymentsPage() {
       setExecMetrics(res);
     } catch (e) {
       console.error(e);
-      setTerminalOutput("Error executing snippet in sandbox. Check connection to localhost:8000.");
+      setTerminalOutput("Error executing snippet in sandbox. Make sure the backend server is running on localhost:8000.");
     } finally {
       setExecuting(false);
     }
@@ -252,7 +256,7 @@ export default function DeploymentsPage() {
       }
 
       setProxyOutput(data);
-      await loadRegisteredEndpoints();
+      await loadModelsAndEndpoints();
     } catch (err: any) {
       setProxyError(err.message || "Proxy inference execution failed.");
     } finally {
@@ -388,9 +392,9 @@ export default function DeploymentsPage() {
 {`{
   "mcpServers": {
     "agenthub": {
-      "command": "C:\\\\Users\\\\Tharun R Gowda\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe",
+      "command": "python",
       "args": [
-        "C:\\\\Users\\\\Tharun R Gowda\\\\Desktop\\\\codefury\\\\backend\\\\mcp_server.py",
+        "C:\\\\Users\\\\<USER_NAME>\\\\<PROJECT_FOLDER>\\\\backend\\\\mcp_server.py",
         "--transport",
         "stdio"
       ]
@@ -448,11 +452,21 @@ export default function DeploymentsPage() {
                   onChange={(e) => handleModelChange(e.target.value)}
                   className="bg-white border border-black/15 px-3 py-1.5 text-xs font-mono font-bold text-black uppercase outline-none focus:border-black"
                 >
-                  <option value="llama3-8b-instruct">Llama 3 8B Instruct</option>
-                  <option value="deepseek-coder-67b-instruct">DeepSeek Coder 6.7B</option>
-                  <option value="biomedlm-2-7b">BioMistral 7B Medical</option>
-                  <option value="fingpt-forecaster-llama2">FinGPT Forecaster</option>
-                  <option value="mistral-7b-instruct">Mistral 7B Instruct</option>
+                  {allModels.length > 0 ? (
+                    allModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.id})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="llama3-8b-instruct">Llama 3 8B Instruct</option>
+                      <option value="deepseek-coder-67b-instruct">DeepSeek Coder 6.7B</option>
+                      <option value="biomedlm-2-7b">BioMistral 7B Medical</option>
+                      <option value="fingpt-forecaster-llama2">FinGPT Forecaster</option>
+                      <option value="mistral-7b-instruct">Mistral 7B Instruct</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -592,22 +606,24 @@ export default function DeploymentsPage() {
         {/* ── TAB 3: LIVE GATEWAY PROXY & ACTIVE ENDPOINTS ── */}
         {activeTab === "proxy" && (
           <div className="space-y-8 animate-in fade-in duration-300 w-full">
-            {/* Creator Studio Navigation Banner */}
+            {/* Live Gateway Purpose Card */}
             <div className="p-6 bg-black/[0.02] border border-black flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-[#FF4500]" />
-                  <span>Publish Models in Creator Studio</span>
+                  <Globe className="w-4 h-4 text-[#FF4500]" />
+                  <span>What is the Live Gateway Proxy?</span>
                 </div>
-                <p className="text-xs text-black/70 font-sans max-w-2xl">
-                  Model registration and publishing is unified directly inside Creator Studio. Publish your verified Hugging Face repository or custom cloud endpoint to receive an automated 80% royalty revenue split on all token inferences.
+                <p className="text-xs text-black/75 font-sans max-w-3xl leading-relaxed">
+                  The Gateway Proxy is AgentHub&apos;s universal inference router and double-entry metering engine.
+                  Instead of calling external endpoints directly, client SDKs and applications route requests through this proxy.
+                  The gateway dynamically tracks wall-clock latency, meters token consumption, verifies model availability, and distributes an automated 80% royalty share to creators.
                 </p>
               </div>
               <Link
                 href="/creator"
                 className="px-5 py-2.5 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors shrink-0 shadow-sm"
               >
-                <span>Open Creator Studio</span>
+                <span>Publish New Model</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -619,30 +635,36 @@ export default function DeploymentsPage() {
                 <div className="border-b border-black/10 pb-3">
                   <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                     <Zap className="w-4 h-4 text-[#FF4500]" />
-                    <span>Live Gateway Proxy Testing</span>
+                    <span>Test Any Marketplace Model via Gateway</span>
                   </div>
                   <p className="text-[11px] text-black/60 font-sans mt-0.5">
-                    Dispatch live prompts through AgentHub&apos;s intelligent gateway to measure real-time latency and token metering.
+                    Select any catalog model or registered external endpoint to test real-time gateway routing.
                   </p>
                 </div>
 
                 <div>
                   <label className="block font-mono text-[10px] uppercase font-bold text-black/70 mb-1">
-                    Select Target Registered Endpoint:
+                    Select Model Endpoint:
                   </label>
                   <select
                     value={selectedEndpointId}
                     onChange={(e) => setSelectedEndpointId(e.target.value)}
                     className="w-full p-2.5 bg-black/[0.02] border border-black/20 focus:border-black font-mono text-xs font-bold text-black"
                   >
-                    {registeredList.map((ep) => (
-                      <option key={ep.id} value={ep.id}>
-                        {ep.model_name} ({ep.id}) · {ep.domain} · ${ep.price_per_1k_tokens}/1k
-                      </option>
-                    ))}
-                    <option value="llama3-8b-instruct">Llama 3 8B Instruct (Mesh Default)</option>
-                    <option value="deepseek-coder-67b-instruct">DeepSeek Coder 67B (Mesh Default)</option>
-                    <option value="qwen25-coder-32b-instruct">Qwen 2.5 Coder 32B (Mesh Default)</option>
+                    <optgroup label="── Registered External Endpoints ──">
+                      {registeredList.map((ep) => (
+                        <option key={ep.id} value={ep.id}>
+                          {ep.model_name} ({ep.id}) · {ep.domain} · ${ep.price_per_1k_tokens}/1k
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="── Marketplace Foundation Models ──">
+                      {allModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.domain}) · ${m.price_per_1k}/1k
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
@@ -737,7 +759,7 @@ export default function DeploymentsPage() {
                   <span>Active Registered Endpoints in Gateway</span>
                 </div>
                 <button
-                  onClick={loadRegisteredEndpoints}
+                  onClick={loadModelsAndEndpoints}
                   className="text-[10px] font-mono text-black/60 hover:text-black flex items-center gap-1 uppercase"
                 >
                   <RefreshCw className={`w-3 h-3 ${loadingList ? "animate-spin" : ""}`} />
