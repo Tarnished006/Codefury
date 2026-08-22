@@ -1,5 +1,25 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Determine absolute project root
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = _BACKEND_DIR.parent
+
+# Pre-load .env files from project root and backend dir
+_env_files = [
+    _PROJECT_ROOT / ".env",
+    _PROJECT_ROOT / ".env.local",
+    _BACKEND_DIR / ".env",
+    Path.cwd() / ".env",
+]
+for ef in _env_files:
+    if ef.exists() and ef.is_file():
+        load_dotenv(dotenv_path=str(ef), override=False)
+
+_db_str = str((_PROJECT_ROOT / "agenthub.db").resolve()).replace("\\", "/")
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "AgentHub AI Marketplace & Orchestrator API"
@@ -15,7 +35,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./agenthub.db"
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{_db_str}"
     
     # Hugging Face API Credentials
     HF_TOKEN: Optional[str] = None
@@ -32,7 +52,7 @@ class Settings(BaseSettings):
     
     model_config = SettingsConfigDict(
         case_sensitive=True,
-        env_file=(".env", ".env.local"),
+        env_file=[str(f) for f in _env_files if f.exists()],
         extra="ignore"
     )
 
