@@ -5,8 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/providers/AuthProvider";
 import { Loader2 } from "lucide-react";
 
-const PROTECTED_PATHS = ["/profile", "/wallet"];
-const AUTH_ONLY_PATHS = ["/login", "/register", "/auth/callback"];
+const PUBLIC_PATHS = ["/login", "/register", "/auth/callback"];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -19,20 +18,19 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  const isProtectedPath = PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-  const isAuthOnlyPath = AUTH_ONLY_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
   useEffect(() => {
     if (!mounted || loading) return;
 
-    if (!isAuthenticated && isProtectedPath) {
-      const redirectParam = `?redirect=${encodeURIComponent(pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ""))}`;
+    if (!isAuthenticated && !isPublicPath) {
+      const redirectParam = pathname !== "/" ? `?redirect=${encodeURIComponent(pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ""))}` : "";
       router.replace(`/login${redirectParam}`);
-    } else if (isAuthenticated && isAuthOnlyPath) {
+    } else if (isAuthenticated && isPublicPath) {
       const target = searchParams.get("redirect") || "/";
       router.replace(target);
     }
-  }, [isAuthenticated, loading, isProtectedPath, isAuthOnlyPath, pathname, router, searchParams, mounted]);
+  }, [isAuthenticated, loading, isPublicPath, pathname, router, searchParams, mounted]);
 
   if (!mounted || loading) {
     return (
@@ -51,7 +49,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated && isProtectedPath) {
+  if (!isAuthenticated && !isPublicPath) {
     return (
       <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center gap-3">
         <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -62,7 +60,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isAuthenticated && isAuthOnlyPath) {
+  if (isAuthenticated && isPublicPath) {
     return (
       <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center gap-3">
         <div className="w-8 h-8 border-2 border-[#FF4500] border-t-transparent rounded-full animate-spin" />
