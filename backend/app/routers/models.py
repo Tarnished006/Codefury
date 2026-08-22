@@ -27,9 +27,16 @@ async def create_model(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Allows creators to publish a new AI model to the marketplace."""
+    """Allows creators to publish a new AI model to the marketplace with strict repo verification."""
     if current_user.role != "creator":
         raise HTTPException(status_code=403, detail="Only registered Creators can publish models.")
+
+    # Strict model verification: Ensure repo or endpoint exists
+    from app.routers.registry import verify_target_model_exists
+    await verify_target_model_exists(
+        api_endpoint=model_in.repo_id,
+        model_name=model_in.name
+    )
 
     c_res = await db.execute(select(Creator).filter(Creator.user_id == current_user.id))
     creator = c_res.scalars().first()

@@ -6,7 +6,7 @@ from app.main import app
 async def test_api_registry_deploy_and_proxy_inference():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        # 1. Deploy / Register an external model endpoint
+        # 1. Deploy / Register a genuine, verified model endpoint
         deploy_payload = {
             "developer_id": "usr_test_dev_01",
             "model_name": "DeepSeek Coder Fast Gateway",
@@ -15,7 +15,6 @@ async def test_api_registry_deploy_and_proxy_inference():
             "api_endpoint": "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-coder-6.7b-instruct",
             "api_key_env_or_secret": "hf_test_secret_token",
             "price_per_1k_tokens": 0.14,
-            "p50_latency_ms": 35,
             "context_length": 16384
         }
         res_deploy = await ac.post("/api/registry/deploy", json=deploy_payload)
@@ -47,6 +46,26 @@ async def test_api_registry_deploy_and_proxy_inference():
         assert len(proxy_data["response"]) > 0
         assert proxy_data["tokens_metered"] > 0
         assert proxy_data["latency_ms"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_api_registry_rejects_fake_nonexistent_models():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Attempt to register a bogus/non-existent Hugging Face repo
+        bogus_payload = {
+            "developer_id": "usr_test_dev_01",
+            "model_name": "Bogus Fake Model 9999",
+            "domain": "CODE GEN",
+            "api_endpoint": "https://huggingface.co/nonexistent-org-xyz12345/fake-model-does-not-exist-9999",
+            "price_per_1k_tokens": 0.10,
+            "context_length": 8192
+        }
+        res = await ac.post("/api/registry/deploy", json=bogus_payload)
+        # Must be rejected with HTTP 400 Bad Request
+        assert res.status_code == 400
+        data = res.json()
+        assert "Verification Failed" in data["detail"] or "does not exist" in data["detail"]
 
 
 @pytest.mark.asyncio

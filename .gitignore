@@ -28,7 +28,7 @@ backend/*.db
 backend/*.sqlite
 scratch/
 backend/scratch/
-deployments/
+/deployments/
 
 # Environment variables & local secrets
 .env

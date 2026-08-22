@@ -78,12 +78,6 @@ export default function NeuralNavbar() {
 
         {/* ── Right Telemetry, Wallet & User Auth Badge ── */}
         <div className="hidden md:flex items-center gap-3">
-          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 border border-black/10 bg-black/[0.02] text-[10px] font-mono text-black/60">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF4500] animate-pulse" />
-            <span className="tracking-widest uppercase">LATENCY:</span>
-            <span className="font-bold text-black">{p50}ms</span>
-          </div>
-
           <Link
             href="/wallet"
             className="px-3 py-1.5 bg-black/[0.03] border border-black/15 hover:border-black text-[10px] font-mono font-bold text-black transition-all flex items-center gap-1.5 uppercase tracking-wider"
