@@ -234,6 +234,7 @@ class CheckoutRequest(BaseModel):
     credits_package: int = 500
     payment_method: str = "stripe"
     card_last4: Optional[str] = "4242"
+    origin: Optional[str] = None
 
 class CheckoutResponse(BaseModel):
     transaction_id: str

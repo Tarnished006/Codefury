@@ -34,10 +34,7 @@ function CallbackContent() {
       }
 
       try {
-        const hasProviderParam = searchParams.has("provider");
-        const currentRedirectUri = `${window.location.origin}${window.location.pathname}${
-          hasProviderParam ? `?provider=${provider}` : ""
-        }`;
+        const currentRedirectUri = `${window.location.origin}/auth/callback`;
 
         const res = await loginOAuth(provider, {
           code,

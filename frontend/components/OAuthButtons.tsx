@@ -27,10 +27,10 @@ export default function OAuthButtons({
     if (onStart) onStart();
 
     try {
-      // 1. Fetch configured OAuth URL from backend with explicit callback URL
+      // 1. Fetch configured OAuth URL from backend with clean callback URL
       const currentRedirect =
         typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback?provider=google`
+          ? `${window.location.origin}/auth/callback`
           : undefined;
       const res = await fetchOAuthUrl("google", currentRedirect);
 

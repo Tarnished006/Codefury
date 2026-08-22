@@ -1,7 +1,7 @@
 import uuid
 import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import stripe
@@ -39,10 +39,25 @@ async def get_wallet_balance(user_id: str, db: AsyncSession = Depends(get_db)):
     )
 
 @router.post("/checkout")
-async def create_stripe_checkout(req: CheckoutRequest, db: AsyncSession = Depends(get_db)):
+async def create_stripe_checkout(
+    req: CheckoutRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
     """Creates a real Stripe Checkout Session for test credit package purchase."""
     amount_usd = round(req.credits_package * 0.01, 2)
     amount_cents = int(amount_usd * 100)
+
+    # Dynamically extract client origin
+    client_origin = (
+        req.origin
+        or request.headers.get("origin")
+        or request.headers.get("referer", "").split("/wallet")[0]
+        or "https://codefury-fresh-one.vercel.app"
+    ).rstrip("/")
+
+    success_url = f"{client_origin}/wallet?status=success&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{client_origin}/wallet?status=cancelled"
 
     if settings.STRIPE_SECRET_KEY and settings.STRIPE_SECRET_KEY.startswith("sk_"):
         stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -63,8 +78,8 @@ async def create_stripe_checkout(req: CheckoutRequest, db: AsyncSession = Depend
                 mode="payment",
                 client_reference_id=req.user_id,
                 metadata={"user_id": req.user_id, "credits_package": str(req.credits_package)},
-                success_url=settings.STRIPE_SUCCESS_URL,
-                cancel_url=settings.STRIPE_CANCEL_URL
+                success_url=success_url,
+                cancel_url=cancel_url
             )
             return {
                 "transaction_id": session.id,
@@ -96,7 +111,7 @@ async def create_stripe_checkout(req: CheckoutRequest, db: AsyncSession = Depend
         "credits_added": req.credits_package,
         "amount_usd": amount_usd,
         "new_balance_credits": new_bal,
-        "checkout_url": f"http://localhost:3000/wallet?status=success&session_id={tx.id}",
+        "checkout_url": f"{client_origin}/wallet?status=success&session_id={tx.id}",
         "status": "COMPLETED"
     }
 

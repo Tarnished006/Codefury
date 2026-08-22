@@ -97,6 +97,7 @@ function WalletContent() {
   const handleCheckout = async () => {
     setLoading(true);
     try {
+      const clientOrigin = typeof window !== "undefined" ? window.location.origin : "";
       const res = await fetch(`${getApiBaseUrl()}/wallet/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,12 +105,17 @@ function WalletContent() {
           user_id: userId,
           credits_package: selectedPkg,
           payment_method: "stripe",
+          origin: clientOrigin,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        if (data.checkout_url) {
+        if (data.status === "COMPLETED") {
+          setSuccessMsg(`TOP-UP SUCCESSFUL! +${data.credits_added} CREDITS PROVISIONED.`);
+          if (data.new_balance_credits) setCredits(data.new_balance_credits);
+          loadLedger();
+        } else if (data.checkout_url) {
           window.location.href = data.checkout_url;
         }
       }
