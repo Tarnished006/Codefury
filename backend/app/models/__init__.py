@@ -22,6 +22,7 @@ class User(Base):
     purchased_models = relationship("PurchasedModel", back_populates="user", cascade="all, delete-orphan")
     tested_models = relationship("TestedModel", back_populates="user", cascade="all, delete-orphan")
     creator = relationship("Creator", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    registered_endpoints = relationship("RegisteredEndpoint", back_populates="developer", cascade="all, delete-orphan")
 
 class Wallet(Base):
     __tablename__ = "wallets"
@@ -76,11 +77,37 @@ class AIModel(Base):
     deployments = relationship("Deployment", back_populates="model")
     transactions = relationship("LedgerTransaction", back_populates="model")
 
+class RegisteredEndpoint(Base):
+    """
+    API Registry Pattern:
+    Stores developer-registered external model endpoints (Hugging Face Inference endpoints,
+    custom cloud URLs, AWS/RunPod endpoints, or Ollama/OpenAI-compatible endpoints).
+    AgentHub acts as an intelligent routing gateway, telemetry tracker, and metering layer.
+    """
+    __tablename__ = "registered_endpoints"
+    
+    id = Column(String(36), primary_key=True, index=True)
+    developer_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    model_name = Column(String(255), nullable=False)
+    domain = Column(String(64), index=True, default="LLM CHAT")
+    task_tag = Column(String(100), default="Generative AI")
+    api_endpoint = Column(String(512), nullable=False)
+    api_key_env_or_secret = Column(String(512), nullable=True)
+    price_per_1k_tokens = Column(Float, default=0.10)
+    p50_latency_ms = Column(Integer, default=45)
+    context_length = Column(Integer, default=8192)
+    is_active = Column(Boolean, default=True)
+    total_requests = Column(Integer, default=0)
+    total_tokens_metered = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    developer = relationship("User", back_populates="registered_endpoints")
+
 class LedgerTransaction(Base):
     __tablename__ = "ledger_transactions"
     
     id = Column(String(36), primary_key=True, index=True)
-    transaction_type = Column(String(32), nullable=False) # "INFERENCE_METERING", "WALLET_TOPUP", "CREATOR_PAYOUT"
+    transaction_type = Column(String(32), nullable=False) # "INFERENCE_METERING", "WALLET_TOPUP", "CREATOR_PAYOUT", "PROXY_INFERENCE"
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     model_id = Column(String(64), ForeignKey("ai_models.id"), nullable=True)
     creator_id = Column(String(64), ForeignKey("creators.id"), nullable=True)
