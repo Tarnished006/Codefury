@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Routes that do NOT require authentication
-const PUBLIC_PATHS = ["/login", "/register", "/auth/callback"];
+// Routes that strictly require authentication
+const PROTECTED_PATHS = ["/profile", "/wallet"];
+const AUTH_ONLY_PATHS = ["/login", "/register", "/auth/callback"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,19 +23,18 @@ export function proxy(request: NextRequest) {
     request.cookies.get("agenthub_token")?.value ||
     request.cookies.get("agentnet_token")?.value;
 
-  const isPublicPath = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  const isProtectedPath = PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  const isAuthOnlyPath = AUTH_ONLY_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
   // 3. Unauthenticated user trying to access a protected route
-  if (!token && !isPublicPath) {
+  if (!token && isProtectedPath) {
     const loginUrl = new URL("/login", request.url);
-    if (pathname !== "/") {
-      loginUrl.searchParams.set("redirect", pathname + request.nextUrl.search);
-    }
+    loginUrl.searchParams.set("redirect", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
   // 4. Authenticated user trying to access login or register page
-  if (token && isPublicPath) {
+  if (token && isAuthOnlyPath) {
     const redirectUrl = request.nextUrl.searchParams.get("redirect") || "/";
     return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
