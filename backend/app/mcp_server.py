@@ -483,6 +483,25 @@ async def compare_models_arena(model_a_id: str, model_b_id: str, prompt: str) ->
     except Exception as e:
         return f"[compare_models_arena error]: {e}"
 
+# ── 7. Intelligent Model Recommendation Tool ──────────────────────────────────
+@mcp.tool()
+async def recommend_optimal_model(
+    task_description: str,
+    budget_preference: str = "BALANCED",
+    latency_priority: str = "normal"
+) -> str:
+    """Recommends the best-fit AI models from the live 51+ model catalog based on task requirements, budget constraints, and latency goals."""
+    try:
+        from app.services.assistant_engine import assistant_engine
+        
+        return await assistant_engine.recommend_optimal_model(
+            task_description=task_description,
+            budget_preference=budget_preference,
+            latency_priority=latency_priority
+        )
+    except Exception as e:
+        return f"[recommend_optimal_model error]: {e}"
+
 if __name__ == "__main__":
     if "--transport" in sys.argv and "sse" in sys.argv:
         mcp.run(transport="sse")
