@@ -24,7 +24,11 @@ import {
   Brain,
   DollarSign,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X,
+  Lock,
+  AlertCircle,
+  Wallet
 } from "lucide-react";
 import { fetchModels, purchaseModel, testModel, fetchProfileDetails } from "@/lib/api";
 import { useAuthContext } from "@/providers/AuthProvider";
@@ -84,7 +88,7 @@ const FEATURES = [
 ];
 
 export default function NeuralHero() {
-  const { user, fetchBalance } = useAuthContext();
+  const { user, credits, fetchBalance } = useAuthContext();
   const [selectedDomain, setSelectedDomain] = useState("ALL DOMAINS");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,6 +99,11 @@ export default function NeuralHero() {
   const [purchasedModelIds, setPurchasedModelIds] = useState<string[]>([]);
   const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
   const [testLoading, setTestLoading] = useState<string | null>(null);
+
+  // Modal State
+  const [selectedPurchaseModel, setSelectedPurchaseModel] = useState<any | null>(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadModels() {
@@ -129,18 +138,30 @@ export default function NeuralHero() {
     }
   }
 
-  const handlePurchase = async (modelId: string) => {
-    if (!window.confirm("Unlock full persistent API & deployment access to this model for 100.0 credits?")) {
-      return;
-    }
+  const openPurchaseModal = (m: any) => {
+    setSelectedPurchaseModel(m);
+    setPurchaseSuccess(false);
+    setPurchaseError(null);
+  };
+
+  const closePurchaseModal = () => {
+    setSelectedPurchaseModel(null);
+    setPurchaseSuccess(false);
+    setPurchaseError(null);
+  };
+
+  const confirmPurchase = async () => {
+    if (!selectedPurchaseModel) return;
+    const modelId = selectedPurchaseModel.id;
     setPurchaseLoading(modelId);
+    setPurchaseError(null);
     try {
       await purchaseModel(modelId);
       setPurchasedModelIds((prev) => [...prev, modelId]);
       await fetchBalance();
-      alert("Successfully purchased model access!");
+      setPurchaseSuccess(true);
     } catch (err: any) {
-      alert(err.message || "Failed to purchase model.");
+      setPurchaseError(err.message || "Failed to purchase model access.");
     } finally {
       setPurchaseLoading(null);
     }
@@ -540,11 +561,10 @@ export default function NeuralHero() {
                     </>
                   ) : (
                     <button
-                      onClick={() => handlePurchase(m.id)}
-                      disabled={purchaseLoading === m.id}
-                      className="px-2.5 py-1.5 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors disabled:opacity-50"
+                      onClick={() => openPurchaseModal(m)}
+                      className="px-2.5 py-1.5 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors"
                     >
-                      {purchaseLoading === m.id ? "Unlocking..." : "Buy Model (100 CR)"}
+                      Buy Model (100 CR)
                     </button>
                   )}
                   <Link
@@ -659,11 +679,10 @@ export default function NeuralHero() {
                     </>
                   ) : (
                     <button
-                      onClick={() => handlePurchase(m.id)}
-                      disabled={purchaseLoading === m.id}
-                      className="w-full py-2 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors disabled:opacity-50"
+                      onClick={() => openPurchaseModal(m)}
+                      className="w-full py-2 bg-[#FF4500] text-white text-[9px] font-mono font-bold uppercase tracking-widest hover:bg-black transition-colors"
                     >
-                      {purchaseLoading === m.id ? "Unlocking..." : "Buy Model (100 CR)"}
+                      Buy Model (100 CR)
                     </button>
                   )}
                 </div>
@@ -709,23 +728,232 @@ export default function NeuralHero() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          FOOTER STATUS BAR
+          MODAL: MODEL ACCESS & PURCHASE AUTHORIZATION GATEWAY
          ═══════════════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-black/10 bg-white py-6">
-        <div className="max-w-[1600px] mx-auto px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-black/50 text-center sm:text-left">
-          <div className="flex items-center gap-3 flex-wrap justify-center uppercase tracking-widest text-[10px]">
-            <span className="font-bold text-black">AgentNet</span>
-            <span>//</span>
-            <span>51 Hugging Face Repos</span>
-            <span>//</span>
-            <span>Autonomous Intelligence Layer</span>
+      <AnimatePresence>
+        {selectedPurchaseModel && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closePurchaseModal}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            />
+
+            {/* Modal Dialog Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+              className="relative w-full max-w-lg bg-white border-2 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] z-10 overflow-hidden"
+            >
+              {/* Header Bar */}
+              <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#FF4500] animate-pulse" />
+                  <span className="font-mono text-[11px] font-bold uppercase tracking-widest">
+                    MODEL_ACCESS // CHECKOUT_GATEWAY
+                  </span>
+                </div>
+                <button
+                  onClick={closePurchaseModal}
+                  className="text-white/60 hover:text-white transition-colors p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 sm:p-8 space-y-6">
+                {purchaseSuccess ? (
+                  /* Success State */
+                  <div className="text-center py-4 space-y-5">
+                    <div className="w-16 h-16 bg-emerald-50 border-2 border-emerald-500 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="font-sans font-extrabold text-2xl text-black">
+                        Access Authorized!
+                      </h3>
+                      <p className="font-mono text-xs text-black/60 mt-1 uppercase tracking-wider">
+                        Persistent license granted for {selectedPurchaseModel.name}
+                      </p>
+                    </div>
+                    <div className="bg-black/[0.02] border border-black/10 p-4 text-left font-mono text-xs space-y-2">
+                      <div className="flex justify-between text-black/60">
+                        <span>REPOSITORY:</span>
+                        <span className="font-bold text-black">{selectedPurchaseModel.repo_id}</span>
+                      </div>
+                      <div className="flex justify-between text-black/60">
+                        <span>STATUS:</span>
+                        <span className="font-bold text-emerald-600">ONLINE & PERMITTED</span>
+                      </div>
+                      <div className="flex justify-between text-black/60">
+                        <span>REMAINING BALANCE:</span>
+                        <span className="font-bold text-black">{credits} CR</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <Link
+                        href={`/arena?model=${encodeURIComponent(selectedPurchaseModel.id)}`}
+                        onClick={closePurchaseModal}
+                        className="flex-1 py-3 bg-[#FF4500] text-white font-mono text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-colors"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-white" />
+                        <span>Benchmark in Arena</span>
+                      </Link>
+                      <button
+                        onClick={closePurchaseModal}
+                        className="flex-1 py-3 border border-black font-mono text-xs font-bold uppercase tracking-widest text-black hover:bg-black/[0.04] transition-colors"
+                      >
+                        Close Window
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Purchase State */
+                  <>
+                    {/* Model Details Header */}
+                    <div className="border-b border-black/10 pb-5">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div>
+                          <span className="font-mono text-[9px] font-bold text-[#FF4500] uppercase tracking-widest block mb-1">
+                            // VERIFIED_MODEL_PROFILE
+                          </span>
+                          <h3 className="font-sans font-extrabold text-2xl text-black tracking-tight flex items-center gap-2">
+                            {selectedPurchaseModel.name}
+                            <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+                          </h3>
+                        </div>
+                        <span className="font-mono text-[10px] font-bold px-2.5 py-1 bg-black/[0.04] border border-black/10 uppercase shrink-0">
+                          {selectedPurchaseModel.task_tag}
+                        </span>
+                      </div>
+                      <div className="font-mono text-xs text-black/50 truncate">
+                        {selectedPurchaseModel.repo_id}
+                      </div>
+                      {selectedPurchaseModel.creator_id && (
+                        <div className="mt-2">
+                          <span className="font-mono text-[9px] text-[#FF4500] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#FF4500]/5 border border-[#FF4500]/10 inline-block">
+                            by @{selectedPurchaseModel.creator_name || "Independent"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Spec Grid */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="border border-black/10 p-3 bg-black/[0.015]">
+                        <span className="font-mono text-[9px] text-black/40 uppercase block mb-1">LATENCY P50</span>
+                        <div className="font-mono text-sm font-extrabold text-black flex items-center gap-1">
+                          <Zap className="w-3.5 h-3.5 text-[#FF4500]" />
+                          {selectedPurchaseModel.p50_latency_ms || 38}ms
+                        </div>
+                      </div>
+                      <div className="border border-black/10 p-3 bg-black/[0.015]">
+                        <span className="font-mono text-[9px] text-black/40 uppercase block mb-1">SECURITY</span>
+                        <div className="font-mono text-sm font-extrabold text-[#10B981] flex items-center gap-1">
+                          <Shield className="w-3.5 h-3.5" />
+                          {selectedPurchaseModel.security_score || 98}%
+                        </div>
+                      </div>
+                      <div className="border border-black/10 p-3 bg-black/[0.015]">
+                        <span className="font-mono text-[9px] text-black/40 uppercase block mb-1">CONTEXT</span>
+                        <div className="font-mono text-sm font-extrabold text-black">
+                          {selectedPurchaseModel.context_length ? `${selectedPurchaseModel.context_length.toLocaleString()}` : "8,192"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ledger Breakdown Card */}
+                    <div className="bg-black/[0.02] border border-black/10 p-5 space-y-3 font-mono text-xs">
+                      <div className="flex items-center justify-between text-black/60 pb-2 border-b border-black/5">
+                        <span>UNLOCK LICENSE FEE:</span>
+                        <span className="font-bold text-black">
+                          100.00 CR (${(100 * 0.01).toFixed(2)})
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-black/60 pb-2 border-b border-black/5">
+                        <span>YOUR WALLET BALANCE:</span>
+                        <span className="font-bold text-black flex items-center gap-1">
+                          <Wallet className="w-3.5 h-3.5 text-[#FF4500]" />
+                          {credits} CR
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-black/80 font-bold pt-1">
+                        <span>BALANCE AFTER UNLOCK:</span>
+                        <span className={credits >= 100 ? "text-black font-extrabold" : "text-red-500 font-extrabold"}>
+                          {(credits - 100).toFixed(1)} CR
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Error Banner */}
+                    {purchaseError && (
+                      <div className="p-3 bg-red-50 border border-red-200 text-red-700 font-mono text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{purchaseError}</span>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      {credits < 100 ? (
+                        <div className="w-full space-y-2">
+                          <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 font-mono text-xs flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            <span>Insufficient credit balance. Top up your wallet to continue.</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Link
+                              href="/wallet"
+                              onClick={closePurchaseModal}
+                              className="flex-1 py-3 bg-black text-white font-mono text-xs font-bold uppercase tracking-widest text-center hover:bg-[#FF4500] transition-colors"
+                            >
+                              Deposit Credits
+                            </Link>
+                            <button
+                              onClick={closePurchaseModal}
+                              className="px-5 py-3 border border-black/20 font-mono text-xs font-bold uppercase text-black hover:border-black transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={confirmPurchase}
+                            disabled={purchaseLoading === selectedPurchaseModel.id}
+                            className="flex-1 py-3.5 bg-[#FF4500] text-white font-mono text-xs font-bold uppercase tracking-widest hover:bg-black transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>
+                              {purchaseLoading === selectedPurchaseModel.id
+                                ? "Processing Transaction..."
+                                : "Authorize & Unlock (100 CR)"}
+                            </span>
+                          </button>
+                          <button
+                            onClick={closePurchaseModal}
+                            disabled={purchaseLoading === selectedPurchaseModel.id}
+                            className="px-6 py-3.5 border border-black font-mono text-xs font-bold uppercase tracking-widest text-black hover:bg-black/[0.04] transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-            <span className="text-black font-bold uppercase tracking-widest text-[10px]">ALL 51 CLUSTERS OPERATIONAL</span>
-          </div>
-        </div>
-      </footer>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
