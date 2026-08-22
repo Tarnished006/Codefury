@@ -20,11 +20,14 @@ import {
   Check,
   Eye,
   EyeOff,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  Terminal,
+  Code2
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { useAuthContext } from "@/providers/AuthProvider";
-import { fetchProfileDetails, updateProfile, generateApiKey } from "@/lib/api";
+import { fetchProfileDetails, updateProfile, generateApiKey, deleteApiKey } from "@/lib/api";
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuthContext();
@@ -110,9 +113,20 @@ export default function ProfilePage() {
       setKeyName("");
       await loadProfileDetails();
     } catch (e: any) {
-      console.error(e);
+      console.error("API Key generation error", e);
+      alert(e.message || "Failed to generate API Key. Ensure backend server is running.");
     } finally {
       setKeyLoading(false);
+    }
+  };
+
+  const handleDeleteApiKey = async (keyId: string) => {
+    if (!window.confirm("Are you sure you want to revoke and delete this API key? Applications using this token will immediately lose access.")) return;
+    try {
+      await deleteApiKey(keyId);
+      await loadProfileDetails();
+    } catch (e: any) {
+      alert(e.message || "Failed to delete API key");
     }
   };
 
@@ -390,17 +404,25 @@ export default function ProfilePage() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <span className="text-[9px] text-black/40">
                             {new Date(k.created_at).toLocaleDateString()}
                           </span>
                           <span
                             title="For security, raw keys are encrypted on creation and cannot be revealed or copied."
-                            className="px-2.5 py-1 bg-zinc-100 text-zinc-500 border border-zinc-200 text-[9px] font-mono font-bold uppercase select-none flex items-center gap-1 cursor-help"
+                            className="px-2 py-1 bg-zinc-100 text-zinc-500 border border-zinc-200 text-[8px] font-mono font-bold uppercase select-none flex items-center gap-1 cursor-help"
                           >
                             <Lock className="w-2.5 h-2.5" />
                             <span>LOCKED</span>
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteApiKey(k.id)}
+                            title="Revoke and delete this API key"
+                            className="p-1.5 border border-red-200 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     );
@@ -427,6 +449,36 @@ export default function ProfilePage() {
                   <span>Generate Key</span>
                 </button>
               </form>
+
+              {/* How Users Access Models with API Key Guide */}
+              <div className="border border-black/10 bg-black/[0.015] p-4 text-xs space-y-2">
+                <div className="font-mono text-[10px] font-bold text-black uppercase tracking-wider flex items-center gap-1.5">
+                  <Code2 className="w-3.5 h-3.5 text-[#FF4500]" />
+                  <span>How to Access Models Inside AgentHub via API Key</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] font-mono text-black/75">
+                  <div className="bg-white p-3 border border-black/10 space-y-1">
+                    <span className="text-[9px] text-[#FF4500] font-bold uppercase block">1. Python SDK</span>
+                    <pre className="text-[10px] text-black overflow-x-auto whitespace-pre">
+{`import agenthub
+client = agenthub.Client(api_key="ak_live_...")
+resp = client.chat.completions.create(
+  model="llama3-8b-instruct",
+  messages=[{"role": "user", "content": "..."}]
+)`}
+                    </pre>
+                  </div>
+                  <div className="bg-white p-3 border border-black/10 space-y-1">
+                    <span className="text-[9px] text-black/50 font-bold uppercase block">2. Direct cURL Stream</span>
+                    <pre className="text-[10px] text-black overflow-x-auto whitespace-pre">
+{`curl -X POST http://127.0.0.1:8000/api/models/llama3-8b-instruct/stream \\
+  -H "Authorization: Bearer ak_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"prompt": "Hello", "max_tokens": 128}'`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Two-Column Grid: Purchased Models & Tested Models */}

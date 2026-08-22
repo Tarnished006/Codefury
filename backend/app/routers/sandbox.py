@@ -170,3 +170,25 @@ async def generate_api_key_endpoint(
         created_at=api_key_obj.created_at,
         is_active=True
     )
+
+
+@router.delete("/auth/api-keys/{key_id}")
+@router.delete("/keys/{key_id}")
+async def delete_api_key_endpoint(
+    key_id: str,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deletes and permanently revokes an API key from the database."""
+    k_res = await db.execute(
+        select(ApiKey).filter(
+            (ApiKey.id == key_id) | (ApiKey.key_prefix == key_id)
+        )
+    )
+    key_obj = k_res.scalars().first()
+    if not key_obj:
+        raise HTTPException(status_code=404, detail=f"API Key '{key_id}' not found.")
+
+    await db.delete(key_obj)
+    await db.commit()
+    return {"status": "SUCCESS", "message": f"API key '{key_id}' revoked and deleted successfully."}

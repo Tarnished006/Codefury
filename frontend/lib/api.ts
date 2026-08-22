@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
 function getAuthHeaders(): HeadersInit {
   const headers: Record<string, string> = {
@@ -91,6 +91,18 @@ export async function generateApiKey(name: string = "Production Key") {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "API key generation failed" }));
     throw new Error(err.detail || "API key generation failed");
+  }
+  return res.json();
+}
+
+export async function deleteApiKey(keyId: string) {
+  const res = await fetch(`${API_BASE_URL}/auth/api-keys/${keyId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to delete API key" }));
+    throw new Error(err.detail || "Failed to delete API key");
   }
   return res.json();
 }
