@@ -101,20 +101,19 @@ async def test_owasp_security_audit():
         assert res.get("repo_id") is not None
 
 @pytest.mark.asyncio
-async def test_sandbox_execution():
+async def test_api_key_creation_and_revocation():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        payload = {
-            "language": "python",
-            "code": "import sys; print(f'AgentHub sandbox OK — Python {sys.version_info.major}.{sys.version_info.minor}')",
-            "model_id": "llama3-8b-instruct"
-        }
-        r = await client.post("/api/sandbox/execute", json=payload)
+        payload = {"name": "Test Key for Auth"}
+        r = await client.post("/api/auth/api-keys", json=payload)
         assert r.status_code == 200
         res = r.json()
-        assert res["status"] == "SUCCESS"
-        assert res["exit_code"] == 0
-        assert res["session_id"] is not None
-        # Real stdout should contain actual Python version info
-        assert "AgentHub sandbox OK" in res["output"]
-        assert res["execution_time_ms"] > 0
+        assert res["api_key"].startswith("ah_live_")
+        assert "id" in res
+        key_id = res["id"]
+
+        # Test key revocation / deletion
+        del_r = await client.delete(f"/api/auth/api-keys/{key_id}")
+        assert del_r.status_code == 200
+        del_res = del_r.json()
+        assert del_res["status"] == "SUCCESS"

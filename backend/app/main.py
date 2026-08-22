@@ -9,7 +9,6 @@ from app.routers import (
     arena_router,
     orchestrator_router,
     audit_router,
-    sandbox_router,
     wallet_router,
     creators_router,
     registry_router,
@@ -53,7 +52,6 @@ app.include_router(models_router, prefix=settings.API_V1_STR)
 app.include_router(arena_router, prefix=settings.API_V1_STR)
 app.include_router(orchestrator_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
-app.include_router(sandbox_router, prefix=settings.API_V1_STR)
 app.include_router(wallet_router, prefix=settings.API_V1_STR)
 app.include_router(creators_router, prefix=settings.API_V1_STR)
 app.include_router(registry_router, prefix=settings.API_V1_STR)

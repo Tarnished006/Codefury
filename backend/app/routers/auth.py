@@ -2,6 +2,7 @@ import uuid
 import datetime
 import bcrypt
 import hashlib
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -21,9 +22,10 @@ from app.schemas import (
     PurchasedModelResponse,
     TestedModelResponse,
     LedgerTransactionResponse,
-    ApiKeyResponse
+    ApiKeyResponse,
+    CreateApiKeyRequest
 )
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_optional_user
 
 router = APIRouter(prefix="/auth", tags=["Strict Authentication & JWT"])
 
@@ -330,3 +332,66 @@ async def update_user_profile(
         credits=credits,
         created_at=current_user.created_at
     )
+
+
+@router.post("/api-keys", response_model=ApiKeyResponse)
+@router.post("/keys", response_model=ApiKeyResponse)
+async def generate_api_key_endpoint(
+    req: CreateApiKeyRequest,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Provisions an OpenAI-compatible production API key (ah_live_...).
+    Returns the secret key ONCE. Key is stored securely as a SHA-256 hash with starting credit balance.
+    """
+    user_id = current_user.id if current_user else "usr_guest_demo"
+
+    raw_secret = f"ah_live_{uuid.uuid4().hex}{uuid.uuid4().hex[:8]}"
+    prefix = raw_secret[:12]
+    hashed = hashlib.sha256(raw_secret.encode()).hexdigest()
+
+    key_id = f"key_{uuid.uuid4().hex[:10]}"
+    api_key_obj = ApiKey(
+        id=key_id,
+        user_id=user_id,
+        name=req.name or "Production Key",
+        key_prefix=prefix,
+        hashed_key=hashed,
+        credits_balance=100.0,
+        is_active=True,
+        created_at=datetime.datetime.utcnow()
+    )
+    db.add(api_key_obj)
+    await db.commit()
+
+    return ApiKeyResponse(
+        id=key_id,
+        name=api_key_obj.name,
+        key_prefix=prefix,
+        api_key=raw_secret,
+        created_at=api_key_obj.created_at,
+        is_active=True
+    )
+
+
+@router.delete("/api-keys/{key_id}")
+@router.delete("/keys/{key_id}")
+async def delete_api_key_endpoint(
+    key_id: str,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deletes and permanently revokes an API key from the database."""
+    k_res = await db.execute(
+        select(ApiKey).filter(
+            (ApiKey.id == key_id) | (ApiKey.key_prefix == key_id)
+        )
+    )
+    key_obj = k_res.scalars().first()
+    if not key_obj:
+        raise HTTPException(status_code=404, detail=f"API Key '{key_id}' not found.")
+
+    await db.delete(key_obj)
+    await db.commit()
+    return {"status": "SUCCESS", "message": f"API key '{key_id}' revoked and deleted successfully."}

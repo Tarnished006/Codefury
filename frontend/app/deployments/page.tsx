@@ -1,180 +1,91 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
+import { useState } from "react";
 import Link from "next/link";
 import {
-  Code2,
-  Terminal,
-  Play,
+  Server,
   Copy,
   Check,
   Key,
-  Layers,
   Sparkles,
-  Server,
   Zap,
   CheckCircle2,
-  AlertCircle,
-  FileCode,
-  RotateCcw,
-  Loader2,
   Cpu,
   Plus,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  Layers,
+  Terminal,
+  Activity,
+  Box,
+  FileJson,
+  Workflow
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
-import { executeSandboxSnippet, fetchModels } from "@/lib/api";
-
-// Dynamically load Monaco Editor with zero-SSR hydration issues
-const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[360px] bg-black text-white/50 flex flex-col items-center justify-center gap-3 font-mono text-xs">
-      <Loader2 className="w-5 h-5 animate-spin text-[#FF4500]" />
-      <span>[ INITIALIZING_MONACO_SDK_CANVAS ]</span>
-    </div>
-  ),
-});
-
-const CODE_TEMPLATES = {
-  python: (model: string) => `import agenthub
-
-# Initialize AgentHub client
-client = agenthub.Client(api_key="ah_live_your_secret_api_key")
-
-# Stream inference from deployed open-weight model
-response = client.chat.completions.create(
-    model="${model}",
-    messages=[{"role": "user", "content": "Analyze system telemetry and optimize token throughput."}],
-    stream=True
-)
-
-for chunk in response:
-    print(chunk.choices[0].delta.content or "", end="")`,
-
-  curl: (model: string) => `curl -X POST "http://localhost:8000/v1/chat/completions" \\
-  -H "Authorization: Bearer ah_live_your_secret_api_key" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "model": "${model}",
-    "messages": [
-      {"role": "user", "content": "Analyze system telemetry and optimize token throughput."}
-    ],
-    "temperature": 0.7
-  }'`,
-
-  javascript: (model: string) => `import OpenAI from "openai";
-
-const client = new OpenAI({
-  baseURL: "http://localhost:8000/v1",
-  apiKey: "ah_live_your_secret_api_key"
-});
-
-async function run() {
-  const completion = await client.chat.completions.create({
-    model: "${model}",
-    messages: [{ role: "user", content: "Analyze system telemetry and optimize token throughput." }]
-  });
-
-  console.log(completion.choices[0].message.content);
-}
-
-run();`
-};
 
 const MCP_TOOLS = [
   {
     name: "list_marketplace_models",
-    description: "Queries the live SQLite catalog of 51+ foundation models with real-time pricing and OWASP scores.",
-    params: "domain: Optional[str]"
+    category: "DISCOVERY & CATALOG",
+    badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
+    description: "Queries the live SQLite catalog of 51+ foundation models with real-time pricing, domain specialization, and OWASP audit scores.",
+    params: "domain: Optional[str] (e.g. 'code', 'medical', 'finance', 'general')",
+    returns: "List[ModelSummary] with pricing, context windows, and creator revenue shares"
   },
   {
     name: "recommend_optimal_model",
-    description: "Evaluates workload requirements, budget constraints, and latency goals to recommend top best-fit models.",
-    params: "task_description: str, budget_preference: str, latency_priority: str"
+    category: "AI ORCHESTRATION",
+    badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+    description: "Evaluates workload requirements, budget constraints, and latency goals to recommend top best-fit foundation models.",
+    params: "task_description: str, budget_preference: str, latency_priority: str",
+    returns: "Ranked list of top 3 recommended models with reasoning scores"
   },
   {
     name: "orchestrate_meta_agent",
-    description: "Decomposes goals into a multi-model DAG pipeline across domain specialists and synthesizes output.",
-    params: "goal: str, max_budget_credits: Optional[float]"
+    category: "MULTI-MODEL PIPELINE",
+    badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
+    description: "Decomposes complex natural language goals into a multi-model DAG pipeline across domain specialists and synthesizes unified output.",
+    params: "goal: str, max_budget_credits: Optional[float]",
+    returns: "Orchestration DAG with step-by-step execution metrics, latency, and tokens"
   },
   {
     name: "run_redteam_audit",
-    description: "Executes 5-axis OWASP red-team adversarial penetration tests with LLM-as-a-Judge scoring.",
-    params: "model_id: str"
+    category: "SECURITY & OWASP",
+    badgeColor: "bg-red-50 text-red-700 border-red-200",
+    description: "Executes 5-axis OWASP red-team adversarial penetration tests (prompt injection, jailbreak, task hijacking, data leakage) with LLM-as-a-Judge scoring.",
+    params: "model_id: str",
+    returns: "OWASP scores across 5 axes and vulnerability classification report"
   },
   {
     name: "compare_models_arena",
-    description: "Benchmarks two models head-to-head concurrently on the same prompt measuring latency and token throughput.",
-    params: "model_a_id: str, model_b_id: str, prompt: str"
+    category: "BENCHMARKING",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    description: "Benchmarks two models head-to-head concurrently on the same prompt measuring latency, token throughput, and response quality.",
+    params: "model_a_id: str, model_b_id: str, prompt: str",
+    returns: "Head-to-head metrics: wall-clock latency (ms), tokens/sec, and side-by-side outputs"
   },
   {
     name: "run_inference",
-    description: "Runs live inference completion against a registered or catalog model endpoint.",
-    params: "model_id: str, prompt: str, max_tokens: int, temperature: float"
+    category: "EXECUTION & GATEWAY",
+    badgeColor: "bg-orange-50 text-[#FF4500] border-orange-200",
+    description: "Runs live inference completion against a registered or catalog model endpoint with automatic token metering and credit deduction.",
+    params: "model_id: str, prompt: str, max_tokens: int, temperature: float",
+    returns: "Inference completion text, tokens consumed, latency, and ledger transaction ID"
   },
   {
     name: "execute_sandboxed_code",
-    description: "Executes Python code in an isolated sandbox runner against live GPU clusters.",
-    params: "code: str, language: str"
+    category: "DEVELOPER TOOLS",
+    badgeColor: "bg-zinc-100 text-zinc-800 border-zinc-300",
+    description: "Executes Python code in an isolated environment against live model endpoints with hard execution timeouts and resource caps.",
+    params: "code: str, language: str (default 'python')",
+    returns: "Execution stdout, stderr, exit code, session ID, and duration ms"
   }
 ];
 
 export default function DeploymentsPage() {
-  const [activeTab, setActiveTab]         = useState<"mcp" | "sandbox">("mcp");
-  const [language, setLanguage]           = useState<"python" | "curl" | "javascript">("python");
-  const [selectedModel, setSelectedModel] = useState("llama3-8b-instruct");
-  const [copied, setCopied]               = useState(false);
   const [mcpConfigCopied, setMcpConfigCopied] = useState(false);
-
-  // Two-way interactive code state for Monaco Editor
-  const [customCode, setCustomCode]       = useState<string>(() => CODE_TEMPLATES.python("llama3-8b-instruct"));
-
-  // Execution Runner State
-  const [executing, setExecuting]         = useState(false);
-  const [terminalOutput, setTerminalOutput] = useState<string | null>(null);
-  const [execMetrics, setExecMetrics]     = useState<any>(null);
-
-  // Catalog Models State
-  const [allModels, setAllModels]         = useState<any[]>([]);
-  const [loadingList, setLoadingList]     = useState(false);
-
-  useEffect(() => {
-    loadModels();
-  }, []);
-
-  const loadModels = async () => {
-    setLoadingList(true);
-    try {
-      const modelsData = await fetchModels();
-      setAllModels(modelsData || []);
-    } catch (e) {
-      console.error("Failed to load models", e);
-    } finally {
-      setLoadingList(false);
-    }
-  };
-
-  const handleLanguageChange = (newLang: "python" | "curl" | "javascript") => {
-    setLanguage(newLang);
-    setCustomCode(CODE_TEMPLATES[newLang](selectedModel));
-  };
-
-  const handleModelChange = (newModel: string) => {
-    setSelectedModel(newModel);
-    setCustomCode(CODE_TEMPLATES[language](newModel));
-  };
-
-  const handleResetTemplate = () => {
-    setCustomCode(CODE_TEMPLATES[language](selectedModel));
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(customCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const [sseUrlCopied, setSseUrlCopied]       = useState(false);
+  const [activeFilter, setActiveFilter]       = useState<string>("ALL");
 
   const handleCopyMcpConfig = () => {
     const config = JSON.stringify({
@@ -194,20 +105,15 @@ export default function DeploymentsPage() {
     setTimeout(() => setMcpConfigCopied(false), 2000);
   };
 
-  const handleRunCode = async () => {
-    setExecuting(true);
-    setTerminalOutput(null);
-    try {
-      const res = await executeSandboxSnippet(language, customCode, selectedModel, "demo_key");
-      setTerminalOutput(res.output);
-      setExecMetrics(res);
-    } catch (e: any) {
-      console.error(e);
-      setTerminalOutput(`Error executing snippet in sandbox: ${e.message || "Connection error"}\nMake sure the backend server is running on http://127.0.0.1:8000.`);
-    } finally {
-      setExecuting(false);
-    }
+  const handleCopySseUrl = () => {
+    navigator.clipboard.writeText("http://localhost:8001/sse");
+    setSseUrlCopied(true);
+    setTimeout(() => setSseUrlCopied(false), 2000);
   };
+
+  const filteredTools = activeFilter === "ALL"
+    ? MCP_TOOLS
+    : MCP_TOOLS.filter(t => t.category.includes(activeFilter));
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-[#FF4500] selection:text-white">
@@ -219,17 +125,17 @@ export default function DeploymentsPage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-2 py-0.5 bg-black text-white font-mono text-[10px] font-bold uppercase tracking-widest">
-                DEVELOPER_INFRASTRUCTURE_&_MCP_HUB
+                MODEL_CONTEXT_PROTOCOL_HUB
               </span>
               <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">
-                // Model Context Protocol & Monaco SDK Sandbox
+                // Autonomous Agent MCP Infrastructure
               </span>
             </div>
             <h1 className="font-sans font-extrabold text-4xl sm:text-5xl text-black tracking-tight">
-              deployments & mcp hub.
+              model context protocol (mcp).
             </h1>
             <p className="text-xs text-black/60 mt-1 font-mono uppercase max-w-2xl">
-              Connect autonomous agents via Model Context Protocol (MCP) or test execution code against the unified foundation model marketplace.
+              Equip Claude Desktop, Cursor IDE, or custom agent frameworks with full autonomous access to the AgentHub multi-model foundation catalog.
             </p>
           </div>
 
@@ -239,89 +145,89 @@ export default function DeploymentsPage() {
               className="px-4 py-2 bg-black text-white hover:bg-[#FF4500] font-mono text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Publish Model in Creator Studio</span>
+              <span>Publish in Creator Studio</span>
             </Link>
             <Link
               href="/profile"
               className="px-4 py-2 border border-black/20 hover:border-black font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors flex items-center gap-1.5"
             >
               <Key className="w-3.5 h-3.5 text-[#FF4500]" />
-              <span>API Keys & Playground</span>
+              <span>API Keys &amp; Playground</span>
             </Link>
           </div>
         </div>
 
-        {/* ── Primary Navigation Tabs (Streamlined to 2 Tabs) ── */}
-        <div className="flex items-center gap-2 mb-8 border-b border-black/15">
-          <button
-            onClick={() => setActiveTab("mcp")}
-            className={`px-5 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
-              activeTab === "mcp"
-                ? "border-black text-black bg-black/[0.02]"
-                : "border-transparent text-black/40 hover:text-black"
-            }`}
-          >
-            <Server className="w-4 h-4 text-[#FF4500]" />
-            <span>1. Model Context Protocol (MCP) Server</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("sandbox")}
-            className={`px-5 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
-              activeTab === "sandbox"
-                ? "border-black text-black bg-black/[0.02]"
-                : "border-transparent text-black/40 hover:text-black"
-            }`}
-          >
-            <Code2 className="w-4 h-4 text-black" />
-            <span>2. Monaco SDK Code Canvas &amp; Runner</span>
-          </button>
-        </div>
-
-        {/* ── TAB 1: MODEL CONTEXT PROTOCOL (MCP) SERVER HUB ── */}
-        {activeTab === "mcp" && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            {/* Top Cards: MCP Endpoints and Claude Config */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Card 1: Remote SSE MCP Server */}
-              <div className="border border-black p-6 bg-white space-y-4">
-                <div className="flex items-center gap-2 border-b border-black/10 pb-3">
+        {/* ── Top Grid: MCP Server Transports & Client Setup ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+          {/* Card 1: Remote SSE Server Status */}
+          <div className="border border-black p-6 bg-white flex flex-col justify-between space-y-5">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-black/10 pb-3">
+                <div className="flex items-center gap-2">
                   <Server className="w-4 h-4 text-[#FF4500]" />
                   <span className="font-mono text-xs font-bold uppercase tracking-wider">
                     Remote MCP Server // Server-Sent Events (SSE)
                   </span>
                 </div>
-                <p className="text-xs font-sans text-black/70 leading-relaxed">
-                  AgentHub runs a high-throughput Model Context Protocol (MCP) server over SSE.
-                  Connect Claude Desktop, Cursor IDE, or custom agent frameworks to control marketplace models autonomously.
-                </p>
-                <div className="p-3 bg-black text-white font-mono text-xs select-all flex items-center justify-between">
-                  <span>http://localhost:8001/sse</span>
-                  <span className="text-[10px] text-[#10B981] font-bold">LIVE (PORT 8001)</span>
-                </div>
-                <div className="text-[11px] font-mono text-black/60">
-                  Default Transport: <code className="bg-black/5 px-1.5 py-0.5">stdio</code> for local subprocesses or <code className="bg-black/5 px-1.5 py-0.5">sse</code> for remote network agents.
-                </div>
+                <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  PORT 8001 LIVE
+                </span>
               </div>
 
-              {/* Card 2: Claude Desktop Configuration */}
-              <div className="border border-black p-6 bg-black/[0.02] space-y-4">
-                <div className="flex items-center justify-between border-b border-black/10 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-black" />
-                    <span className="font-mono text-xs font-bold uppercase tracking-wider">
-                      Claude Desktop / Cursor Config
-                    </span>
-                  </div>
+              <p className="text-xs font-sans text-black/75 leading-relaxed">
+                AgentHub runs a high-performance Model Context Protocol server exposing all marketplace endpoints over SSE. Connect remote agents or development environments over standard HTTP streaming.
+              </p>
+
+              <div className="space-y-2">
+                <div className="text-[10px] font-mono text-black/50 uppercase font-bold">
+                  SSE Connection Endpoint:
+                </div>
+                <div className="p-3 bg-[#09090B] text-white font-mono text-xs flex items-center justify-between">
+                  <span className="text-[#10B981]">http://localhost:8001/sse</span>
                   <button
-                    onClick={handleCopyMcpConfig}
-                    className="px-2.5 py-1 bg-black text-white hover:bg-[#FF4500] font-mono text-[10px] font-bold uppercase flex items-center gap-1"
+                    onClick={handleCopySseUrl}
+                    className="px-2 py-1 bg-white/10 hover:bg-[#FF4500] text-white text-[10px] font-mono uppercase flex items-center gap-1 transition-colors"
                   >
-                    {mcpConfigCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
-                    <span>{mcpConfigCopied ? "Copied" : "Copy JSON"}</span>
+                    {sseUrlCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
+                    <span>{sseUrlCopied ? "Copied" : "Copy"}</span>
                   </button>
                 </div>
-                <pre className="p-3.5 bg-black text-white text-[11px] font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto">
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-black/10 grid grid-cols-2 gap-3 text-[11px] font-mono">
+              <div className="p-2.5 bg-black/[0.02] border border-black/5">
+                <span className="text-black/40 text-[9px] block uppercase">PROTOCOL VERSION</span>
+                <strong className="text-black">MCP Specification 2024-11-05</strong>
+              </div>
+              <div className="p-2.5 bg-black/[0.02] border border-black/5">
+                <span className="text-black/40 text-[9px] block uppercase">TRANSPORTS SUPPORTED</span>
+                <strong className="text-black">stdio / sse (JSON-RPC 2.0)</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Claude Desktop & Cursor Configuration */}
+          <div className="border border-black p-6 bg-black/[0.02] flex flex-col justify-between space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-black/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-black" />
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider">
+                    Claude Desktop / Cursor IDE Config
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopyMcpConfig}
+                  className="px-3 py-1 bg-black text-white hover:bg-[#FF4500] font-mono text-[10px] font-bold uppercase flex items-center gap-1.5 transition-colors shadow-sm"
+                >
+                  {mcpConfigCopied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
+                  <span>{mcpConfigCopied ? "Copied to Clipboard" : "Copy JSON Config"}</span>
+                </button>
+              </div>
+
+              <pre className="p-3.5 bg-[#09090B] text-white text-[11px] font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto border border-zinc-800">
 {`{
   "mcpServers": {
     "agenthub": {
@@ -334,207 +240,131 @@ export default function DeploymentsPage() {
     }
   }
 }`}
-                </pre>
-                <div className="text-[10px] font-mono text-black/50">
-                  Paste into: <code className="bg-black/5 px-1 py-0.5">%APPDATA%\\Claude\\claude_desktop_config.json</code>
-                </div>
-              </div>
+              </pre>
             </div>
 
-            {/* Bottom: Live MCP Tool Directory */}
-            <div className="border border-black p-6 bg-white space-y-5">
-              <div className="border-b border-black/10 pb-3">
-                <div className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#FF4500]" />
-                  <span>Active MCP Tool Suite (7 Registered Platform Tools)</span>
-                </div>
-                <p className="text-xs font-sans text-black/60 mt-0.5">
-                  These tools are exposed over standard JSON-RPC 2.0 to any AI assistant executing via MCP.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {MCP_TOOLS.map((tool, idx) => (
-                  <div key={idx} className="p-4 border border-black/10 bg-black/[0.015] space-y-2 hover:border-black transition-colors">
-                    <div className="font-mono text-xs font-bold text-black flex items-center gap-1.5">
-                      <span className="text-[#FF4500]">●</span>
-                      <span>{tool.name}()</span>
-                    </div>
-                    <p className="text-[11px] font-sans text-black/75 leading-relaxed">
-                      {tool.description}
-                    </p>
-                    <div className="pt-2 border-t border-black/10 font-mono text-[9px] text-black/50 truncate">
-                      Args: {tool.params}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="p-3 bg-white border border-black/10 text-[11px] font-mono text-black/70 space-y-1">
+              <div className="text-[10px] font-bold uppercase text-black">Installation Path:</div>
+              <div>• <strong>Claude Desktop:</strong> <code className="bg-black/5 px-1 py-0.5 text-[10px]">%APPDATA%\Claude\claude_desktop_config.json</code></div>
+              <div>• <strong>Cursor IDE:</strong> Settings &gt; Features &gt; MCP &gt; Add Server</div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* ── TAB 2: MONACO SDK CODE CANVAS & RUNNER ── */}
-        {activeTab === "sandbox" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Controls Strip */}
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center border border-black/10 bg-black/[0.015] p-4">
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-black/50 font-bold uppercase tracking-wider text-[10px]">TARGET_MODEL:</span>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => handleModelChange(e.target.value)}
-                  className="bg-white border border-black/15 px-3 py-1.5 text-xs font-mono font-bold text-black uppercase outline-none focus:border-black"
+        {/* ── MCP Tool Suite Section ── */}
+        <div className="border border-black p-8 bg-white space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/10 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#FF4500]" />
+                <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-black">
+                  Active MCP Tool Suite (7 Registered Autonomous Tools)
+                </h2>
+              </div>
+              <p className="text-xs font-sans text-black/60 mt-1">
+                These tools are registered and exposed over standard JSON-RPC 2.0. Claude or any MCP-enabled assistant can call them directly in conversation.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {["ALL", "DISCOVERY", "ORCHESTRATION", "SECURITY", "BENCHMARKING", "EXECUTION"].map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
+                    activeFilter === filter
+                      ? "bg-black text-white"
+                      : "bg-black/5 hover:bg-black/10 text-black/60 hover:text-black"
+                  }`}
                 >
-                  {allModels.length > 0 ? (
-                    allModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.id})
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="llama3-8b-instruct">Llama 3 8B Instruct</option>
-                      <option value="deepseek-coder-67b-instruct">DeepSeek Coder 6.7B</option>
-                      <option value="biomedlm-2-7b">BioMistral 7B Medical</option>
-                      <option value="fingpt-forecaster-llama2">FinGPT Forecaster</option>
-                      <option value="mistral-7b-instruct">Mistral 7B Instruct</option>
-                    </>
-                  )}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                {(["python", "curl", "javascript"] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => handleLanguageChange(lang)}
-                    className={`px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
-                      language === lang
-                        ? "bg-black text-white"
-                        : "bg-white border border-black/10 text-black/50 hover:text-black hover:border-black"
-                    }`}
-                  >
-                    {lang}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Monaco Editor & Sandbox Output Console */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-6 items-start">
-              {/* Left: Monaco Editor */}
-              <div className="border border-black/10 bg-[#09090B] overflow-hidden relative z-10">
-                <div className="flex items-center justify-between px-5 py-3 bg-[#121214] border-b border-zinc-800 text-xs font-mono text-zinc-400">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-                    <span className="ml-2 text-zinc-200 font-bold uppercase text-[10px]">
-                      sandbox.{language === "python" ? "py" : language === "curl" ? "sh" : "ts"}
-                    </span>
-                    <span className="text-[9px] text-[#10B981] ml-2 font-mono">
-                      [ EDITABLE_CANVAS ]
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleResetTemplate}
-                      title="Reset to initial template"
-                      className="px-2.5 py-1 text-zinc-400 hover:text-white transition-colors flex items-center gap-1 text-[10px] font-mono uppercase"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reset</span>
-                    </button>
-                    <button
-                      onClick={handleCopy}
-                      className="px-2.5 py-1 text-zinc-400 hover:text-white transition-colors flex items-center gap-1 text-[10px] font-mono uppercase"
-                    >
-                      {copied ? <Check className="w-3 h-3 text-[#10B981]" /> : <Copy className="w-3 h-3" />}
-                      <span>{copied ? "Copied" : "Copy"}</span>
-                    </button>
-                    <button
-                      onClick={handleRunCode}
-                      disabled={executing}
-                      className="bg-[#FF4500] text-white px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider hover:bg-[#E03E00] transition-colors flex items-center gap-1.5 disabled:opacity-40"
-                    >
-                      {executing ? (
-                        <>
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Executing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3 h-3 fill-white" />
-                          <span>Run Snippet</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="relative w-full h-[380px] bg-[#09090B]">
-                  <MonacoEditor
-                    height="380px"
-                    language={language === "python" ? "python" : language === "curl" ? "shell" : "javascript"}
-                    value={customCode}
-                    onChange={(val) => setCustomCode(val || "")}
-                    theme="vs-dark"
-                    options={{
-                      readOnly: false,
-                      minimap: { enabled: false },
-                      fontSize: 13,
-                      lineNumbers: "on",
-                      wordWrap: "on",
-                      automaticLayout: true,
-                      tabSize: 4,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Right: Sandbox Console */}
-              <div className="border border-black/10 bg-white p-6">
-                <div className="flex items-center justify-between pb-3 border-b border-black/10 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-black" />
-                    <span className="font-mono text-xs font-bold text-black uppercase tracking-widest">
-                      SANDBOX_EXECUTION_CONSOLE
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono text-[#10B981] font-bold">
-                    GPU_CLUSTER: 100% OK
-                  </span>
-                </div>
-
-                {terminalOutput ? (
-                  <div className="space-y-4">
-                    <pre className="bg-black text-white p-5 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-[280px] overflow-y-auto">
-                      {terminalOutput}
-                    </pre>
-
-                    {execMetrics && (
-                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-black/10 text-xs font-mono">
-                        <div className="bg-black/[0.02] p-3 border border-black/10">
-                          <span className="text-[9px] text-black/40 uppercase block">EXECUTION LATENCY</span>
-                          <strong className="text-black">{execMetrics.execution_time_ms}ms</strong>
-                        </div>
-                        <div className="bg-black/[0.02] p-3 border border-black/10">
-                          <span className="text-[9px] text-black/40 uppercase block">TOKENS CONSUMED</span>
-                          <strong className="text-black">{execMetrics.tokens_used}</strong>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-12 text-center text-xs font-mono text-black/40 bg-black/[0.015] border border-dashed border-black/15 uppercase">
-                    Modify code in the editor and click &quot;Run Snippet&quot; to execute with the embedded AgentHub SDK.
-                  </div>
-                )}
-              </div>
+                  {filter}
+                </button>
+              ))}
             </div>
           </div>
-        )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredTools.map((tool, idx) => (
+              <div
+                key={idx}
+                className="p-5 border border-black/10 bg-white hover:border-black transition-all flex flex-col justify-between space-y-3 group"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`px-2 py-0.5 border text-[9px] font-mono font-bold uppercase tracking-wider ${tool.badgeColor}`}>
+                      {tool.category}
+                    </span>
+                    <span className="text-[10px] font-mono text-black/30 group-hover:text-[#FF4500] transition-colors">
+                      TOOL #{idx + 1}
+                    </span>
+                  </div>
+
+                  <div className="font-mono text-xs font-extrabold text-black flex items-center gap-1.5 pt-1">
+                    <span className="text-[#FF4500]">●</span>
+                    <code className="text-black bg-black/5 px-1.5 py-0.5">{tool.name}()</code>
+                  </div>
+
+                  <p className="text-xs font-sans text-black/75 leading-relaxed">
+                    {tool.description}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-black/10 space-y-1.5 text-[10px] font-mono text-black/60">
+                  <div>
+                    <span className="text-black/40 font-bold uppercase block text-[9px]">PARAMETERS</span>
+                    <code className="text-black/80">{tool.params}</code>
+                  </div>
+                  <div>
+                    <span className="text-black/40 font-bold uppercase block text-[9px]">RETURNS</span>
+                    <span className="text-black/80">{tool.returns}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── 3-Step Setup Quickstart Guide ── */}
+        <div className="mt-10 border border-black p-8 bg-black/[0.015] space-y-6">
+          <div className="border-b border-black/10 pb-4">
+            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-black flex items-center gap-2">
+              <Workflow className="w-4 h-4 text-black" />
+              <span>3-Step Autonomous Agent Setup Workflow</span>
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 bg-white border border-black/10 space-y-2">
+              <div className="w-6 h-6 bg-black text-white font-mono text-xs font-bold flex items-center justify-center">
+                1
+              </div>
+              <h4 className="font-mono text-xs font-bold uppercase text-black">Copy Config to Claude</h4>
+              <p className="text-xs font-sans text-black/70 leading-relaxed">
+                Click &quot;Copy JSON Config&quot; above and add the configuration block to your Claude Desktop or Cursor configuration file.
+              </p>
+            </div>
+
+            <div className="p-4 bg-white border border-black/10 space-y-2">
+              <div className="w-6 h-6 bg-black text-white font-mono text-xs font-bold flex items-center justify-center">
+                2
+              </div>
+              <h4 className="font-mono text-xs font-bold uppercase text-black">Restart Host Client</h4>
+              <p className="text-xs font-sans text-black/70 leading-relaxed">
+                Restart Claude Desktop or reload Cursor. The hammer tool icon will appear with 7 AgentHub tools loaded.
+              </p>
+            </div>
+
+            <div className="p-4 bg-white border border-black/10 space-y-2">
+              <div className="w-6 h-6 bg-black text-white font-mono text-xs font-bold flex items-center justify-center">
+                3
+              </div>
+              <h4 className="font-mono text-xs font-bold uppercase text-black">Prompt Naturally</h4>
+              <p className="text-xs font-sans text-black/70 leading-relaxed">
+                Ask Claude to &quot;Benchmark Llama 3 vs DeepSeek Coder&quot; or &quot;Audit BioMistral against OWASP vulnerabilities&quot; and watch it invoke the tools automatically.
+              </p>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );

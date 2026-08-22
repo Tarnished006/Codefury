@@ -72,16 +72,6 @@ export async function requestCreatorPayout(payload: {
   return res.json();
 }
 
-export async function executeSandboxSnippet(language: string, code: string, modelId: string, apiKey?: string) {
-  const res = await fetch(`${API_BASE_URL}/sandbox/execute`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ language, code, model_id: modelId, api_key: apiKey })
-  });
-  if (!res.ok) throw new Error("Sandbox execution failed");
-  return res.json();
-}
-
 export async function generateApiKey(name: string = "Production Key") {
   const res = await fetch(`${API_BASE_URL}/auth/api-keys`, {
     method: "POST",
