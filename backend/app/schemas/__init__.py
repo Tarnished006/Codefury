@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6)
     handle: str = Field(..., min_length=2, max_length=50)
+    role: Optional[str] = "developer"
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -24,6 +25,7 @@ class UserResponse(BaseModel):
     role: str
     credits: float
     created_at: datetime
+    creator_id: Optional[str] = None
 
 # --- Creator & Marketplace Schemas ---
 class CreatorBase(BaseModel):
@@ -69,12 +71,35 @@ class AIModelBase(BaseModel):
     parameters: str
     p50_latency_ms: int
     price_per_1k: float
+    purchase_price: float = 100.0
     security_score: int
     is_online: bool
     creator_id: Optional[str] = None
 
 class AIModelResponse(AIModelBase):
     creator_name: Optional[str] = None
+
+class AIModelCreate(BaseModel):
+    name: str
+    repo_id: str
+    domain: str
+    task_tag: str
+    description: Optional[str] = None
+    context_length: int = 8192
+    parameters: str = "8B"
+    price_per_1k: float = 0.12
+    purchase_price: float = 100.0
+
+class AIModelUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    domain: Optional[str] = None
+    task_tag: Optional[str] = None
+    context_length: Optional[int] = None
+    parameters: Optional[str] = None
+    price_per_1k: Optional[float] = None
+    purchase_price: Optional[float] = None
+    is_online: Optional[bool] = None
 
 class ModelInferenceRequest(BaseModel):
     prompt: str
@@ -214,5 +239,67 @@ class LedgerTransactionResponse(BaseModel):
     cost_credits: float
     creator_royalty_credits: float
     platform_fee_credits: float
+    description: Optional[str] = None
+    created_at: datetime
+
+# --- Purchased & Tested Models and User Profile Details ---
+class PurchasedModelResponse(BaseModel):
+    id: str
+    model_id: str
+    model_name: str
+    price_paid: float
+    purchased_at: datetime
+
+class TestedModelResponse(BaseModel):
+    id: str
+    model_id: str
+    model_name: str
+    tested_at: datetime
+    test_details: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    handle: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+
+class UserProfileDetailsResponse(BaseModel):
+    id: str
+    email: str
+    handle: str
+    role: str
+    created_at: datetime
+    balance_credits: float
+    total_spent: float
+    total_tokens_used: int
+    api_keys: List[ApiKeyResponse]
+    purchased_models: List[PurchasedModelResponse]
+    tested_models: List[TestedModelResponse]
+    ecommerce_history: List[LedgerTransactionResponse]
+    creator_id: Optional[str] = None
+
+# --- Creator Profile & Wallet Schemas ---
+class CreatorProfileResponse(BaseModel):
+    id: str
+    name: str
+    handle: str
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    total_earnings_credits: float
+    pending_payout_credits: float
+    pending_payout_usd: float
+    lifetime_earnings_usd: float
+    models_count: int
+    payout_status: str
+    revenue_split_percent: str
+    created_at: datetime
+
+class CreatorTransactionResponse(BaseModel):
+    id: str
+    transaction_type: str
+    model_id: Optional[str] = None
+    model_name: Optional[str] = None
+    tokens_metered: int
+    cost_credits: float
+    creator_royalty_credits: float
     description: Optional[str] = None
     created_at: datetime

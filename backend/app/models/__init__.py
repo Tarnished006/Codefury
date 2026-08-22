@@ -19,6 +19,9 @@ class User(Base):
     api_keys = relationship("ApiKey", back_populates="user")
     orchestrations = relationship("OrchestrationJob", back_populates="user")
     transactions = relationship("LedgerTransaction", back_populates="user")
+    purchased_models = relationship("PurchasedModel", back_populates="user", cascade="all, delete-orphan")
+    tested_models = relationship("TestedModel", back_populates="user", cascade="all, delete-orphan")
+    creator = relationship("Creator", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class Wallet(Base):
     __tablename__ = "wallets"
@@ -42,7 +45,9 @@ class Creator(Base):
     total_earnings_credits = Column(Float, default=0.0)
     pending_payout_credits = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    user_id = Column(String(36), ForeignKey("users.id"), unique=True, nullable=True)
     
+    user = relationship("User", back_populates="creator")
     models = relationship("AIModel", back_populates="creator")
     payouts = relationship("CreatorPayout", back_populates="creator")
     transactions = relationship("LedgerTransaction", back_populates="creator")
@@ -61,6 +66,7 @@ class AIModel(Base):
     parameters = Column(String(32), default="8B")
     p50_latency_ms = Column(Integer, default=38)
     price_per_1k = Column(Float, default=0.12)
+    purchase_price = Column(Float, default=100.0)
     security_score = Column(Integer, default=98)
     is_online = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -164,3 +170,27 @@ class OrchestrationJob(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     user = relationship("User", back_populates="orchestrations")
+
+class PurchasedModel(Base):
+    __tablename__ = "purchased_models"
+    
+    id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    model_id = Column(String(64), ForeignKey("ai_models.id"), nullable=False)
+    price_paid = Column(Float, default=0.0)
+    purchased_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    user = relationship("User", back_populates="purchased_models")
+    model = relationship("AIModel")
+
+class TestedModel(Base):
+    __tablename__ = "tested_models"
+    
+    id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    model_id = Column(String(64), ForeignKey("ai_models.id"), nullable=False)
+    tested_at = Column(DateTime, default=datetime.datetime.utcnow)
+    test_details = Column(String(255), nullable=True)
+    
+    user = relationship("User", back_populates="tested_models")
+    model = relationship("AIModel")
