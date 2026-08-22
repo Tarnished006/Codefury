@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import NeuralNavbar from "@/components/NeuralNavbar";
 import { orchestrateDAG } from "@/lib/api";
+import { useAuthContext } from "@/providers/AuthProvider";
 
 const PRESET_GOALS = [
   {
@@ -37,6 +38,7 @@ const PRESET_GOALS = [
 ];
 
 export default function OrchestratorPage() {
+  const { user } = useAuthContext();
   const [goal, setGoal] = useState(PRESET_GOALS[0].prompt);
   const [budgetMode, setBudgetMode] = useState<"high" | "low">("high");
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export default function OrchestratorPage() {
     setResult(null);
     try {
       const maxBudget = budgetMode === "low" ? 0.5 : 100.0;
-      const res = await orchestrateDAG(goal, "usr_guest_demo", maxBudget);
+      const res = await orchestrateDAG(goal, user?.id, maxBudget);
       setResult(res);
       setSelectedStep(0);
     } catch (e) {

@@ -49,13 +49,40 @@ async def test_creators_and_revenue_split():
 async def test_creator_payout_withdrawal():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Register a temp user to authorize
+        unique_email = f"pay_{uuid.uuid4().hex[:6]}@test.com"
+        unique_handle = f"pay_{uuid.uuid4().hex[:6]}"
+        reg_r = await client.post("/api/auth/register", json={
+            "email": unique_email,
+            "handle": unique_handle,
+            "password": "Password123!"
+        })
+        assert reg_r.status_code == 200
+        res_data = reg_r.json()
+        token = res_data["access_token"]
+        user_id = res_data["user"]["id"]
+
+        # Link user to creator in SQLite for authorization bypass
+        import sqlite3
+        from pathlib import Path
+        db_path = Path(__file__).resolve().parent.parent.parent / "agenthub.db"
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE creators SET user_id = ? WHERE id = ?", (user_id, "creator_deepseek"))
+        conn.commit()
+        conn.close()
+
         payload = {
             "creator_id": "creator_deepseek",
             "amount_credits": 100.0,
             "payout_method": "stripe_connect",
             "destination_address": "acct_1234567890_us_bank"
         }
-        r = await client.post("/api/creators/payout", json=payload)
+        r = await client.post(
+            "/api/creators/payout",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"}
+        )
         assert r.status_code == 200
         payout = r.json()
         assert payout["status"] == "COMPLETED"

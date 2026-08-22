@@ -31,15 +31,34 @@ function WalletContent() {
   const [loading, setLoading] = useState(false);
   const [ledger, setLedger] = useState<any[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [creatorEarnings, setCreatorEarnings] = useState<any>(null);
 
-  const userId = user?.id || "usr_guest_demo";
+  const userId = user?.id;
 
   useEffect(() => {
-    loadLedger();
-    checkSessionReturn();
-  }, [userId]);
+    if (userId) {
+      loadLedger();
+      checkSessionReturn();
+      if (user?.role === "creator" && user?.creator_id) {
+        loadCreatorEarnings(user.creator_id);
+      }
+    }
+  }, [userId, user?.role, user?.creator_id]);
+
+  const loadCreatorEarnings = async (cid: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/creators/${cid}/earnings`);
+      if (res.ok) {
+        const data = await res.json();
+        setCreatorEarnings(data);
+      }
+    } catch (e) {
+      console.error("Creator earnings load error", e);
+    }
+  };
 
   const loadLedger = async () => {
+    if (!userId) return;
     try {
       const res = await fetch(`http://localhost:8000/api/wallet/ledger/${userId}`);
       if (res.ok) {
@@ -125,6 +144,65 @@ function WalletContent() {
         <div className="mb-8 p-4 bg-[#F0FDF4] border border-[#DCFCE7] flex items-center gap-3 text-xs font-mono text-[#166534]">
           <CheckCircle2 className="w-5 h-5 text-[#16A34A] shrink-0" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {/* ── Creator Earnings Section (Only for role === "creator") ── */}
+      {user?.role === "creator" && creatorEarnings && (
+        <div className="mb-12 border border-[#FF4500]/25 bg-[#FF4500]/[0.015] p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/10 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="badge-mono bg-[#FF4500] text-white font-mono text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 select-none">
+                  CREATOR_ROYALTIES
+                </span>
+                <span className="font-mono text-[10px] text-black/40 uppercase tracking-widest">// 80% split accumulated balance</span>
+              </div>
+              <h2 className="font-sans font-bold text-2xl text-[#FF4500] mt-2">Creator Earnings</h2>
+            </div>
+            <a
+              href="/creator"
+              className="btn-solid-black py-2.5 px-6 text-xs font-mono font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5"
+            >
+              <span>Go to Creator Studio</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="border border-black/10 bg-white p-5 space-y-2">
+              <span className="font-mono text-[9px] text-black/40 block uppercase font-bold">PENDING_PAYOUT_BALANCE</span>
+              <div className="font-mono text-2xl font-extrabold text-[#10B981]">
+                CR {creatorEarnings.pending_payout_credits ? creatorEarnings.pending_payout_credits.toFixed(2) : "0.00"}
+              </div>
+              <span className="font-mono text-[10px] text-black/50 block uppercase">
+                ≈ ${creatorEarnings.pending_payout_usd ? creatorEarnings.pending_payout_usd.toFixed(2) : "0.00"} USD
+              </span>
+            </div>
+
+            <div className="border border-black/10 bg-white p-5 space-y-2">
+              <span className="font-mono text-[9px] text-black/40 block uppercase font-bold">LIFETIME_ACCUMULATED_ROYALTIES</span>
+              <div className="font-mono text-2xl font-extrabold text-black">
+                CR {creatorEarnings.lifetime_earnings_credits ? creatorEarnings.lifetime_earnings_credits.toFixed(2) : "0.00"}
+              </div>
+              <span className="font-mono text-[10px] text-black/50 block uppercase">
+                ≈ ${creatorEarnings.lifetime_earnings_usd ? creatorEarnings.lifetime_earnings_usd.toFixed(2) : "0.00"} USD
+              </span>
+            </div>
+
+            <div className="border border-black/10 bg-white p-5 space-y-2">
+              <span className="font-mono text-[9px] text-black/40 block uppercase font-bold">PAYOUT_ELIGIBILITY</span>
+              <div className="font-mono text-xs font-bold text-black flex items-center gap-2 pt-1.5">
+                <span className={`w-2.5 h-2.5 rounded-full ${creatorEarnings.pending_payout_credits >= 10.0 ? "bg-[#10B981]" : "bg-[#FF4500]"}`} />
+                <span className="uppercase tracking-wider">
+                  {creatorEarnings.pending_payout_credits >= 10.0 ? "Eligible (>= 10 CR)" : "Below threshold (< 10 CR)"}
+                </span>
+              </div>
+              <span className="font-mono text-[9px] text-black/40 block uppercase mt-1">
+                Revenue Share: 80% Creator / 20% Platform
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
